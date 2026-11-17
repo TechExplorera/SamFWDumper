@@ -95,6 +95,10 @@ on:
         description: 'recovery.img'
         type: boolean
         default: false
+      extract_super:
+        description: 'super.img'
+        type: boolean
+        default: false
 
 jobs:
   dump:
