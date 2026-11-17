@@ -107,7 +107,13 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost || true
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
 
       - name: Install dependencies
         run: |
@@ -142,6 +148,7 @@ jobs:
           ${{ github.event.inputs.extract_vbmeta_system }} && PARTITIONS="$PARTITIONS vbmeta_system"
           ${{ github.event.inputs.extract_dtbo }} && PARTITIONS="$PARTITIONS dtbo"
           ${{ github.event.inputs.extract_recovery }} && PARTITIONS="$PARTITIONS recovery"
+          ${{ github.event.inputs.extract_super }} && PARTITIONS="$PARTITIONS super"
           
           PARTITIONS="${PARTITIONS# }"
           

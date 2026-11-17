@@ -60,7 +60,7 @@ That link is what you'll paste into the workflow.
 
 **Images Extractor** - which partitions can you grab?
 
-`boot` `dtbo` `init_boot` `odm` `odm_dlkm` `product` `recovery` `system` `system_dlkm` `system_ext` `vbmeta` `vbmeta_system` `vendor` `vendor_boot` `vendor_dlkm`
+`boot` `dtbo` `init_boot` `odm` `odm_dlkm` `product` `recovery` `super` `system` `system_dlkm` `system_ext` `vbmeta` `vbmeta_system` `vendor` `vendor_boot` `vendor_dlkm`
 
 ---
 
