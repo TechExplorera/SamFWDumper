@@ -142,6 +142,7 @@ jobs:
           ${{ github.event.inputs.extract_vbmeta_system }} && PARTITIONS="$PARTITIONS vbmeta_system"
           ${{ github.event.inputs.extract_dtbo }} && PARTITIONS="$PARTITIONS dtbo"
           ${{ github.event.inputs.extract_recovery }} && PARTITIONS="$PARTITIONS recovery"
+          ${{ github.event.inputs.extract_super }} && PARTITIONS="$PARTITIONS super"
           
           PARTITIONS="${PARTITIONS# }"
           

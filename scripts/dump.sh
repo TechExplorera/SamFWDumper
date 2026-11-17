@@ -37,6 +37,10 @@ chmod +x tools/android-tools/* tools/erofs-utils/* 2>/dev/null || true
 
 SUPER_PARTS="system system_ext product vendor vendor_dlkm system_dlkm odm odm_dlkm"
 NEED_SUPER=false
+WANT_SUPER_IMG=false
+for PART in $SELECTED_PARTITIONS; do
+  [ "$PART" = "super" ] && WANT_SUPER_IMG=true
+done
 for PART in $SELECTED_PARTITIONS; do
   for SP in $SUPER_PARTS; do
     if [ "$PART" = "$SP" ]; then
@@ -87,6 +91,8 @@ mkdir -p processed
 
 echo "  Processing individual partitions..."
 for PART in $SELECTED_PARTITIONS; do
+  # super.img is handled separately below (it may also be needed for lpunpack)
+  [ "$PART" = "super" ] && continue
   [ -f "processed/${PART}.img.xz" ] && continue
   [ -f "processed/${PART}_a.img.xz" ] && continue
   [ -f "processed/${PART}_b.img.xz" ] && continue
@@ -109,15 +115,36 @@ for PART in $SELECTED_PARTITIONS; do
   fi
 done
 
-SUPER_FILE=$(find . -maxdepth 1 -name "super.img*" | head -n 1)
-if $NEED_SUPER && [ -n "$SUPER_FILE" ] && [ -f "$SUPER_FILE" ]; then
-  echo ""; echo "  Extracting super.img..."
-  
+SUPER_FILE=$(find . -maxdepth 1 \( -name "super.img.lz4" -o -name "super.img" \) | head -n 1)
+
+if { $NEED_SUPER || $WANT_SUPER_IMG; } && [ -n "$SUPER_FILE" ] && [ -f "$SUPER_FILE" ]; then
   if [[ "$SUPER_FILE" == *.lz4 ]]; then
-    echo "    Decompressing LZ4..."
+    echo ""; echo "  Decompressing super.img.lz4..."
     lz4 -d "$SUPER_FILE" "super.img" 2>/dev/null || { echo "    ❌ LZ4 failed"; exit 1; }
+    rm -f "$SUPER_FILE"
     SUPER_FILE="super.img"
   fi
+fi
+
+if $WANT_SUPER_IMG; then
+  if [ -n "$SUPER_FILE" ] && [ -f "$SUPER_FILE" ]; then
+    echo ""; echo "  Packaging super.img..."
+    # Keep the original if lpunpack still needs it
+    XZ_KEEP=""
+    $NEED_SUPER && XZ_KEEP="-k"
+    if xz $XZ_FLAGS $XZ_KEEP -T0 "$SUPER_FILE" 2>/dev/null; then
+      mv "${SUPER_FILE}.xz" "processed/super.img.xz"
+    else
+      cp "$SUPER_FILE" "processed/super.img"
+    fi
+    echo "    ✓ super.img"
+  else
+    echo "  ⚠️ super.img not found (device may not use dynamic partitions)"
+  fi
+fi
+
+if $NEED_SUPER && [ -n "$SUPER_FILE" ] && [ -f "$SUPER_FILE" ]; then
+  echo ""; echo "  Extracting super.img..."
   
   if file "$SUPER_FILE" 2>/dev/null | grep -q "sparse"; then
     echo "    Converting sparse image..."
