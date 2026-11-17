@@ -72,6 +72,7 @@ echo "✅ Downloaded: $(numfmt --to=iec $FILESIZE)"
 
 CSC_CODE=$(echo "$ZIP_FILE" | sed 's/\.zip$//' | tr '_' '\n' | grep -E '^[A-Z]{3}$' | grep -v -E '^(COM|SAM|FAC)$' | head -1)
 AP_CODE=$(echo "$ZIP_FILE" | sed 's/\.zip$//' | tr '_' '\n' | grep -E '^[A-Z][A-Z0-9]{11,}$' | head -1)
+CSC_CODE="${CSC_CODE:-Unknown}"; AP_CODE="${AP_CODE:-Unknown}"
 echo "$CSC_CODE" > csc_code.txt
 echo "$AP_CODE" > ap_code.txt
 echo "Firmware: $AP_CODE | CSC: $CSC_CODE"
