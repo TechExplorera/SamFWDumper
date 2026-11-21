@@ -1,0 +1,29 @@
+services:
+  uploader:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - uploader_data:/data
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - uploader
+
+volumes:
+  uploader_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,5 @@
+{$DOMAIN} {
+	# Sin compresión: rompería Content-Length y la reanudación de descargas grandes.
+	# Caddy no impone timeouts de lectura/escritura al proxy por defecto.
+	reverse_proxy uploader:8080
+}
