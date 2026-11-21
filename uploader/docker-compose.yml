@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     env_file: .env
     volumes:
-      - ./data:/data
+      - uploader_data:/data
     expose:
       - "8080"
 
@@ -24,5 +24,6 @@ services:
       - uploader
 
 volumes:
+  uploader_data:
   caddy_data:
   caddy_config:

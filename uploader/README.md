@@ -22,7 +22,7 @@ nano .env              # ajusta DOMAIN y BASE_URL
 docker compose up -d --build
 ```
 
-Caddy saca el certificado HTTPS automáticamente. Los archivos se guardan en `./data`.
+Caddy saca el certificado HTTPS automáticamente. Los archivos se guardan en el volumen de Docker `uploader_data`.
 
 ### Sin Docker
 
@@ -70,7 +70,11 @@ Con `Accept: application/json` la subida devuelve JSON (`url`, `delete_token`, `
 
 ## Almacenamiento
 
-Cada archivo se guarda como `data/<id>.bin`, con sus metadatos en `data/<id>.json`. No hay base de datos: para hacer copia de seguridad basta con copiar `data/`.
+Cada archivo se guarda como `data/<id>.bin`, con sus metadatos en `data/<id>.json`. No hay base de datos. Copia de seguridad con Docker:
+
+```bash
+docker run --rm -v uploader_uploader_data:/data -v "$PWD":/backup alpine tar czf /backup/uploader-backup.tgz -C /data .
+```
 
 ## Notas
 
