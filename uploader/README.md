@@ -75,4 +75,15 @@ Cada archivo se guarda como `data/<id>.bin`, con sus metadatos en `data/<id>.jso
 ## Notas
 
 - Si usas Cloudflare con proxy (nube naranja), el plan gratuito corta las subidas a **100 MB**. Para archivos grandes, deja el DNS en "solo DNS".
-- Para usarlo desde GitHub Actions, guarda el token como secret y sube con `curl -fsS -H "Authorization: Bearer ${{ secrets.UPLOADER_TOKEN }}" -T archivo "$UPLOADER_URL/"`.
+
+## Usarlo con los workflows de SamFWDumper
+
+Los workflows `dump.yml` y `system_files.yml` tienen el destino **`uploader`**. Para activarlo:
+
+1. En el repo: *Settings → Secrets and variables → Actions → New repository secret*:
+   - `UPLOADER_URL` = `https://files.tudominio.com`
+   - `UPLOADER_TOKEN` = el mismo `UPLOAD_TOKEN` del servidor
+2. Opcional, en la pestaña *Variables*: `UPLOADER_DAYS` (días de caducidad; si no la pones, se usa `DEFAULT_DAYS`).
+3. Lanza el workflow y elige `uploader` en *Upload destination*.
+
+Los enlaces van a la Release igual que con GoFile, pero **caducan** según `UPLOADER_DAYS` o `MAX_DAYS`. Si quieres que duren más, sube `MAX_DAYS` en el servidor.
