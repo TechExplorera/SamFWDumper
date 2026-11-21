@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uploader</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --line:#2a2f3a; --fg:#e6e8ee; --mut:#8a91a0; --acc:#4f8cff; --ok:#3ecf8e; --err:#ff5d5d; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f6f8; --card:#fff; --line:#dde1e8; --fg:#1a1d24; --mut:#5d6575; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:32px 16px; }
+  h1 { font-size:22px; margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  label { display:block; font-size:13px; color:var(--mut); margin-bottom:6px; }
+  input, select, button { font:inherit; color:inherit; }
+  input[type=password], input[type=number], select { width:100%; padding:8px 10px; background:var(--bg); border:1px solid var(--line); border-radius:8px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  #drop { border:2px dashed var(--line); border-radius:12px; padding:40px 16px; text-align:center; cursor:pointer; color:var(--mut); transition:.15s; }
+  #drop.over { border-color:var(--acc); color:var(--fg); }
+  button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--fg); }
+  .item { padding:10px 0; border-top:1px solid var(--line); }
+  .item:first-child { border-top:0; }
+  .name { font-weight:600; word-break:break-all; }
+  .meta { color:var(--mut); font-size:13px; }
+  .bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin:6px 0; }
+  .bar > div { height:100%; width:0; background:var(--acc); }
+  .link { display:flex; gap:8px; align-items:center; margin-top:4px; }
+  .link a { color:var(--acc); word-break:break-all; flex:1; font-size:14px; }
+  .err { color:var(--err); }
+  .ok { color:var(--ok); }
+  code { background:var(--bg); padding:2px 6px; border-radius:4px; font-size:13px; }
+  @media (max-width:520px) { .row { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Uploader</h1>
+
+  <div class="card">
+    <label for="token">Token de subida (se guarda solo en este navegador)</label>
+    <input type="password" id="token" autocomplete="off" placeholder="UPLOAD_TOKEN">
+    <div class="row" style="margin-top:12px">
+      <div>
+        <label for="days">Caduca en (días)</label>
+        <input type="number" id="days" min="1" value="7">
+      </div>
+      <div>
+        <label for="dls">Máx. descargas (0 = sin límite)</label>
+        <input type="number" id="dls" min="0" value="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="drop">Arrastra archivos aquí o haz clic para elegir</div>
+    <input type="file" id="file" multiple hidden>
+    <div id="queue" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <strong>Mis archivos</strong>
+      <button class="ghost" id="refresh">Actualizar</button>
+    </div>
+    <div id="list" class="meta" style="margin-top:8px">Introduce el token para ver tus archivos.</div>
+  </div>
+
+  <p class="meta">Desde terminal: <code>curl -H "Authorization: Bearer $TOKEN" -T archivo.zip <span id="origin"></span>/</code></p>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const tokenEl = $('#token');
+const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+                set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
+tokenEl.value = store.get('upload_token') || '';
+tokenEl.addEventListener('change', () => { store.set('upload_token', tokenEl.value); loadList(); });
+$('#origin').textContent = location.origin;
+
+const fmt = n => { const u=['B','KB','MB','GB','TB']; let i=0; while(n>=1024&&i<u.length-1){n/=1024;i++;} return n.toFixed(i?1:0)+' '+u[i]; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const drop = $('#drop'), input = $('#file');
+drop.onclick = () => input.click();
+input.onchange = () => { [...input.files].forEach(upload); input.value=''; };
+['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', ev => [...ev.dataTransfer.files].forEach(upload));
+
+function copyBtn(url) {
+  const b = document.createElement('button'); b.className='ghost'; b.textContent='Copiar';
+  b.onclick = async () => { try { await navigator.clipboard.writeText(url); b.textContent='Copiado'; } catch { prompt('Copia el enlace:', url); } };
+  return b;
+}
+
+function upload(file) {
+  if (!tokenEl.value) { alert('Introduce el token primero'); return; }
+  const el = document.createElement('div'); el.className='item';
+  el.innerHTML = `<div class="name">${esc(file.name)}</div><div class="bar"><div></div></div><div class="meta">0% de ${fmt(file.size)}</div>`;
+  $('#queue').prepend(el);
+  const bar = el.querySelector('.bar > div'), meta = el.querySelector('.meta');
+
+  const fd = new FormData(); fd.append('file', file);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/?days=' + encodeURIComponent($('#days').value) + '&downloads=' + encodeURIComponent($('#dls').value));
+  xhr.setRequestHeader('Authorization', 'Bearer ' + tokenEl.value);
+  xhr.setRequestHeader('Accept', 'application/json');
+  const t0 = Date.now();
+  xhr.upload.onprogress = e => {
+    if (!e.lengthComputable) return;
+    const p = e.loaded / e.total * 100, secs = (Date.now()-t0)/1000;
+    bar.style.width = p + '%';
+    meta.textContent = `${p.toFixed(0)}% de ${fmt(e.total)} · ${fmt(e.loaded/Math.max(secs,0.1))}/s`;
+  };
+  xhr.onload = () => {
+    if (xhr.status === 200) {
+      const r = JSON.parse(xhr.responseText);
+      bar.style.width='100%';
+      meta.innerHTML = `<span class="ok">Subido</span> · caduca ${new Date(r.expires).toLocaleString()}`;
+      const l = document.createElement('div'); l.className='link';
+      l.innerHTML = `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a>`;
+      l.append(copyBtn(r.url)); el.append(l);
+      loadList();
+    } else {
+      meta.innerHTML = `<span class="err">Error ${xhr.status}: ${esc(xhr.responseText.trim())}</span>`;
+    }
+  };
+  xhr.onerror = () => { meta.innerHTML = '<span class="err">Error de red</span>'; };
+  xhr.send(fd);
+}
+
+async function loadList() {
+  const list = $('#list');
+  if (!tokenEl.value) { list.textContent = 'Introduce el token para ver tus archivos.'; return; }
+  const r = await fetch('/api/files', { headers: { Authorization: 'Bearer ' + tokenEl.value } });
+  if (!r.ok) { list.innerHTML = '<span class="err">Token incorrecto</span>'; return; }
+  const files = await r.json();
+  if (!files.length) { list.textContent = 'No hay archivos.'; return; }
+  list.innerHTML = '';
+  for (const f of files) {
+    const el = document.createElement('div'); el.className='item';
+    const dl = f.max_downloads ? `${f.downloads}/${f.max_downloads}` : f.downloads;
+    el.innerHTML = `<div class="name">${esc(f.name)}</div>
+      <div class="meta">${fmt(f.size)} · ${dl} descargas · caduca ${new Date(f.expires).toLocaleString()}</div>
+      <div class="link"><a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.url)}</a></div>`;
+    const del = document.createElement('button'); del.className='ghost'; del.textContent='Borrar';
+    del.onclick = async () => {
+      if (!confirm('¿Borrar ' + f.name + '?')) return;
+      await fetch(f.url, { method:'DELETE', headers:{ 'X-Delete-Token': f.delete_token } });
+      loadList();
+    };
+    const link = el.querySelector('.link'); link.append(copyBtn(f.url), del);
+    list.append(el);
+  }
+}
+$('#refresh').onclick = loadList;
+loadList();
+</script>
+</body>
+</html>
