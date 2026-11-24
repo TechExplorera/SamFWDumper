@@ -96,4 +96,18 @@ Future<void> openFolder(String path) async {
   if (Platform.isLinux) await Process.start('xdg-open', [path], mode: ProcessStartMode.detached);
 }
 
-const kitchenTools = ['extract.erofs', 'mkfs.erofs', 'mke2fs.android', 'e2fsdroid'];
+const kitchenTools = ['extract.erofs', 'fsck.erofs', 'mkfs.erofs', 'mke2fs.android', 'e2fsdroid'];
+
+/// Capacidades según las herramientas encontradas (cada una tiene alternativas).
+class ToolCaps {
+  final bool extractErofs, buildErofs, buildExt4;
+  ToolCaps(ToolBox t)
+      : extractErofs = t.has('extract.erofs') || t.has('fsck.erofs'),
+        buildErofs = t.has('mkfs.erofs'),
+        buildExt4 = t.has('mke2fs.android') && t.has('e2fsdroid');
+  List<String> get missing => [
+        if (!extractErofs) 'extraer EROFS',
+        if (!buildErofs) 'construir EROFS',
+        if (!buildExt4) 'construir ext4',
+      ];
+}

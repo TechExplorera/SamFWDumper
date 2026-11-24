@@ -1,12 +1,15 @@
-Coloca aquí los binarios de Android (ARM64, enlazados estáticamente) con nombre `lib<herramienta>.so`,
-sustituyendo los puntos por guiones bajos:
+Binarios de Android empaquetados como `lib<herramienta>.so` (los puntos del nombre pasan a `_`).
+Android 10+ solo permite ejecutar binarios desde el directorio de librerías nativas de la app;
+la app los busca ahí automáticamente.
 
-| Herramienta      | Archivo                          |
-|------------------|----------------------------------|
-| extract.erofs    | arm64-v8a/libextract_erofs.so    |
-| mkfs.erofs       | arm64-v8a/libmkfs_erofs.so       |
-| mke2fs.android   | arm64-v8a/libmke2fs_android.so   |
-| e2fsdroid        | arm64-v8a/libe2fsdroid.so        |
+`arm64-v8a/` lo genera `tool/build_android_tools.sh <NDK>` (también lo hace CI):
+erofs-utils oficial (kernel.org, v1.9.4) + lz4 v1.10.0, compilados con el NDK (API 29).
 
-Android 10+ solo permite ejecutar binarios desde el directorio de librerías nativas de la app,
-por eso se empaquetan así. La app los busca en `nativeLibraryDir` automáticamente.
+| Archivo                | Herramienta  | Uso en la app                                             |
+|------------------------|--------------|-----------------------------------------------------------|
+| libmkfs_erofs.so       | mkfs.erofs   | Construir EROFS (`--tar=f` con metadatos Android en PAX)  |
+| libfsck_erofs.so       | fsck.erofs   | Extraer datos de EROFS (metadatos: lector en Dart)        |
+| libdump_erofs.so       | dump.erofs   | Diagnóstico                                               |
+
+Se pueden añadir otros (p. ej. `libmke2fs_android.so`, `libe2fsdroid.so` para ext4)
+con el mismo esquema de nombres.

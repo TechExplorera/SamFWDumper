@@ -36,6 +36,40 @@ class FsEntry {
 String escapeContextPath(String p) => p.replaceAllMapped(RegExp(r'[.+*?^$|()\[\]{}\\]'), (m) => '\\${m[0]}');
 String unescapeContextPath(String p) => p.replaceAllMapped(RegExp(r'\\(.)'), (m) => m[1]!);
 
+/// Evaluador de file_contexts: entradas exactas + expresiones regulares
+/// (entre reglas que coinciden gana la última, como al añadir reglas al final).
+class FileContexts {
+  final exact = <String, String>{};
+  final regex = <(RegExp, String)>[];
+  FileContexts(String path) {
+    final f = File(path);
+    if (!f.existsSync()) return;
+    for (final l in f.readAsLinesSync()) {
+      final t = l.trim();
+      if (t.isEmpty || t.startsWith('#')) continue;
+      final parts = t.split(RegExp(r'\s+'));
+      if (parts.length < 2) continue;
+      final pat = parts.first, ctx = parts.last;
+      if (RegExp(r'(?<!\\)[.*+?()\[\]{}|^$]').hasMatch(pat)) {
+        try {
+          regex.add((RegExp('^$pat\$'), ctx));
+        } catch (_) {}
+      } else {
+        exact[unescapeContextPath(pat)] = ctx;
+      }
+    }
+  }
+  bool get isEmpty => exact.isEmpty && regex.isEmpty;
+  String? lookup(String path) {
+    final e = exact[path];
+    if (e != null) return e;
+    for (final (re, ctx) in regex.reversed) {
+      if (re.hasMatch(path)) return ctx;
+    }
+    return null;
+  }
+}
+
 String _perm(int mode) => (mode & 0xFFF).toRadixString(8).padLeft(4, '0');
 
 /// Escribe `<name>_fs_config` y `<name>_file_contexts` en [configDir].
@@ -76,13 +110,7 @@ int completeFsMeta(String configDir, String name, String srcDir) {
       if (parts.length >= 4) cfg[parts[0].replaceAll(RegExp(r'/$'), '')] = parts;
     }
   }
-  final ctx = <String, String>{};
-  if (ctxFile.existsSync()) {
-    for (final l in ctxFile.readAsLinesSync()) {
-      final i = l.trim().lastIndexOf(RegExp(r'\s'));
-      if (i > 0) ctx[unescapeContextPath(l.substring(0, i).trim())] = l.substring(i + 1).trim();
-    }
-  }
+  final ctx = FileContexts(ctxFile.path);
   final addCfg = StringBuffer(), addCtx = StringBuffer();
   var added = 0;
   final entities = Directory(srcDir).listSync(recursive: true, followLinks: false)
@@ -102,10 +130,10 @@ int completeFsMeta(String configDir, String name, String srcDir) {
       addCfg.writeln(line.join(' '));
       added++;
     }
-    if (ctx.isNotEmpty && !ctx.containsKey('/$key')) {
-      final pc = ctx['/$parentKey'];
+    if (!ctx.isEmpty && ctx.lookup('/$key') == null) {
+      final pc = ctx.lookup('/$parentKey');
       if (pc != null) {
-        ctx['/$key'] = pc;
+        ctx.exact['/$key'] = pc;
         addCtx.writeln('/${escapeContextPath(key)} $pc');
       }
     }

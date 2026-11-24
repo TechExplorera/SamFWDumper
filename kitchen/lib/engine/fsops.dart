@@ -2,8 +2,10 @@
 import 'dart:io';
 
 import 'detect.dart';
+import 'erofs.dart';
 import 'ext4.dart';
 import 'fsmeta.dart';
+import 'paxtar.dart';
 import 'tools.dart';
 
 String defaultMountPoint(String part) => part == 'system' ? '/' : '/$part';
@@ -36,7 +38,11 @@ Future<void> extractFs(String img, String part, String workDir, ToolBox tools, {
       }
     case ImgType.erofs:
       if (!tools.has('extract.erofs')) {
-        throw StateError('Para extraer EROFS hace falta extract.erofs (no está disponible en este dispositivo todavía).');
+        if (!tools.has('fsck.erofs')) {
+          throw StateError('Para extraer EROFS hace falta extract.erofs o fsck.erofs (Ajustes → Herramientas).');
+        }
+        await _extractErofsUpstream(img, part, outDir, cfgDir, tools, log);
+        break;
       }
       // extract.erofs nombra la salida según el archivo: lo enlazamos como <part>.img
       final tmp = '$workDir/.extract_$part';
@@ -63,6 +69,28 @@ Future<void> extractFs(String img, String part, String workDir, ToolBox tools, {
   }
   File('$cfgDir/${part}_fs_type').writeAsStringSync(type.label);
 }
+
+/// EROFS con erofs-utils oficial: datos con fsck.erofs y metadatos con el lector en Dart.
+Future<void> _extractErofsUpstream(String img, String part, String outDir, String cfgDir, ToolBox tools, LogFn? log) async {
+  log?.call('erofs: leyendo metadatos de $part…');
+  final fs = ErofsImage(img);
+  final List<FsEntry> entries;
+  try {
+    entries = fs.walkMeta();
+  } finally {
+    fs.close();
+  }
+  log?.call('erofs: ${entries.length} entradas; extrayendo datos con fsck.erofs…');
+  Directory(outDir).parent.createSync(recursive: true);
+  await tools.run('fsck.erofs', ['--extract=$outDir', '--no-preserve', '--overwrite', img], log: log);
+  writeFsMeta(cfgDir, part, entries);
+  File('$cfgDir/${part}_mount_point').writeAsStringSync(defaultMountPoint(part));
+}
+
+/// ¿El mkfs.erofs disponible entiende fs_config/file_contexts (versión Android)?
+/// Si no (erofs-utils oficial), se construye desde un tar PAX con los metadatos.
+Future<bool> _mkfsHasAndroidOptions(ToolBox tools) async =>
+    (await tools.helpText('mkfs.erofs')).contains('fs-config-file');
 
 int _dirSize(String path) {
   var total = 0;
@@ -91,7 +119,16 @@ Future<void> buildFs(String part, String workDir, String fsType, String outImg, 
   final hasCtx = File(ctx).existsSync() && File(ctx).lengthSync() > 0;
   final cfgMount = '/$part'; // prefijo usado en fs_config / file_contexts
 
-  if (fsType == 'erofs') {
+  if (fsType == 'erofs' && !await _mkfsHasAndroidOptions(tools)) {
+    log?.call('erofs: construyendo desde tar con metadatos Android (mkfs.erofs --tar)…');
+    var files = 0;
+    await tools.run('mkfs.erofs', ['-zlz4hc,9', '-T', '$timestamp', '--tar=f', outImg], log: log, stdinFeed: (sink) async {
+      files = await writeAndroidTar(sink, src, '$workDir/config', part, mtime: timestamp, onProgress: (n) {
+        if (n % 2000 == 0) log?.call('  $n entradas…');
+      });
+    });
+    log?.call('erofs: $files entradas empaquetadas');
+  } else if (fsType == 'erofs') {
     await tools.run('mkfs.erofs', [
       '-zlz4hc,9',
       '-T', '$timestamp',
@@ -102,6 +139,10 @@ Future<void> buildFs(String part, String workDir, String fsType, String outImg, 
       src,
     ], log: log);
   } else if (fsType == 'ext4') {
+    if (!tools.has('mke2fs.android') || !tools.has('e2fsdroid')) {
+      throw StateError('Construir ext4 requiere mke2fs.android y e2fsdroid'
+          '${Platform.isAndroid ? '. En Android usa "Construir como EROFS" (kernel con EROFS: Samsung con Android 13+)' : ''}.');
+    }
     var size = (_dirSize(src) * 1.15).ceil() + (16 << 20);
     for (var attempt = 0; attempt < 3; attempt++) {
       final blocks = (size + 4095) ~/ 4096;

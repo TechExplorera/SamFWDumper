@@ -35,23 +35,86 @@ class ToolBox {
 
   bool has(String name) => find(name) != null;
 
+  static void clearCache() {
+    _cache.clear();
+    _help.clear();
+  }
+
   Map<String, bool> status(List<String> names) => {for (final n in names) n: has(n)};
 
-  /// Ejecuta [name] con [args]; reenvía la salida línea a línea. Lanza si el código de salida != 0.
-  Future<void> run(String name, List<String> args,
-      {LogFn? log, String? workDir, bool asRoot = false, Map<String, String>? env}) async {
+  /// En Android solo se pueden ejecutar binarios del directorio de librerías de la app.
+  /// Uno de otra carpeta (añadida en Ajustes) se ejecuta copiándolo a /data/local/tmp con root.
+  bool needsRootStaging(String bin) =>
+      Platform.isAndroid && nativeLibDir != null && !bin.startsWith('$nativeLibDir/');
+
+  /// Origen de una herramienta, para mostrar en Ajustes.
+  String describe(String name) {
+    final b = find(name);
+    if (b == null) return 'no encontrada';
+    if (nativeLibDir != null && b.startsWith('$nativeLibDir/')) return 'integrada en la app';
+    if (needsRootStaging(b)) return '$b (se ejecuta con root)';
+    return b;
+  }
+
+  static final _help = <String, String>{};
+
+  /// Texto de ayuda de la herramienta (cacheado), para detectar opciones soportadas.
+  Future<String> helpText(String name) async {
     final bin = find(name);
+    if (bin == null) return '';
+    if (_help.containsKey(bin)) return _help[bin]!;
+    try {
+      if (needsRootStaging(bin)) return _help[bin] = '';
+      final r = await Process.run(bin, ['--help']).timeout(const Duration(seconds: 20));
+      return _help[bin] = '${r.stdout}${r.stderr}';
+    } catch (_) {
+      return _help[bin] = '';
+    }
+  }
+
+  /// Ejecuta [name] con [args]; reenvía la salida línea a línea. Lanza si el código de salida != 0.
+  /// [stdinFeed] permite enviar datos por la entrada estándar (p. ej. un tar a mkfs.erofs).
+  Future<void> run(String name, List<String> args,
+      {LogFn? log,
+      String? workDir,
+      bool asRoot = false,
+      Map<String, String>? env,
+      Future<void> Function(IOSink stdin)? stdinFeed}) async {
+    var bin = find(name);
     if (bin == null) throw StateError('herramienta no encontrada: $name (configúrala en Ajustes → Herramientas)');
-    await runRaw(bin, args, log: log, workDir: workDir, asRoot: asRoot, env: env);
+    if (needsRootStaging(bin)) {
+      if (!await hasRoot()) {
+        throw StateError('$name está en una carpeta externa: en Android solo se puede ejecutar con root. '
+            'Usa la versión integrada o concede root.');
+      }
+      const dir = '/data/local/tmp/fwkitchen';
+      final staged = '$dir/$name';
+      await runRaw('sh', ['-c', 'mkdir -p $dir && cp ${_shQuote(bin)} ${_shQuote(staged)} && chmod 755 ${_shQuote(staged)}'],
+          asRoot: true);
+      await runRaw(staged, args, log: log, workDir: workDir, asRoot: true, env: env, stdinFeed: stdinFeed);
+      // Devolver al usuario de la app los archivos creados como root
+      final uid = (await Process.run('id', ['-u'])).stdout.toString().trim();
+      final owned = args.where((a) => a.startsWith('/') && FileSystemEntity.typeSync(a) != FileSystemEntityType.notFound);
+      for (final a in {...owned, ?workDir}) {
+        await runRaw('chown', ['-R', '$uid:$uid', a], asRoot: true);
+      }
+      return;
+    }
+    await runRaw(bin, args, log: log, workDir: workDir, asRoot: asRoot, env: env, stdinFeed: stdinFeed);
   }
 
   static Future<void> runRaw(String bin, List<String> args,
-      {LogFn? log, String? workDir, bool asRoot = false, Map<String, String>? env}) async {
+      {LogFn? log,
+      String? workDir,
+      bool asRoot = false,
+      Map<String, String>? env,
+      Future<void> Function(IOSink stdin)? stdinFeed}) async {
     final Process p;
     if (asRoot) {
-      final cmd = [bin, ...args].map(_shQuote).join(' ');
+      final envPrefix = env == null ? '' : '${env.entries.map((e) => '${e.key}=${_shQuote(e.value)}').join(' ')} ';
+      final cmd = envPrefix + [bin, ...args].map(_shQuote).join(' ');
       log?.call('# su -c $cmd');
-      p = await Process.start('su', ['-c', cmd], workingDirectory: workDir, environment: env);
+      p = await Process.start('su', ['-c', cmd], workingDirectory: workDir);
     } else {
       log?.call('\$ ${[bin.split('/').last, ...args].join(' ')}');
       p = await Process.start(bin, args, workingDirectory: workDir, environment: env);
@@ -63,6 +126,15 @@ class ToolBox {
           .transform(const LineSplitter())
           .map((l) => l.replaceAll(RegExp(r'\x1B\[[0-9;]*[A-Za-z]'), '')) // quita colores ANSI
           .forEach((l) => log?.call(l)));
+    }
+    if (stdinFeed != null) {
+      try {
+        await stdinFeed(p.stdin);
+      } finally {
+        await p.stdin.close();
+      }
+    } else {
+      await p.stdin.close();
     }
     final code = await p.exitCode;
     await Future.wait(done);

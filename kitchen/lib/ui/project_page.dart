@@ -590,11 +590,10 @@ class _ToolStatus extends StatelessWidget {
   const _ToolStatus({required this.settings});
   @override
   Widget build(BuildContext context) {
-    final st = settings.toolBox().status(kitchenTools);
-    final missing = st.entries.where((e) => !e.value).map((e) => e.key).toList();
+    final missing = ToolCaps(settings.toolBox()).missing;
     return Chip(
-      avatar: Icon(missing.isEmpty ? Icons.check_circle : Icons.warning_amber, size: 18, color: missing.isEmpty ? Colors.green : Colors.orange),
-      label: Text(missing.isEmpty ? 'Herramientas de construcción OK' : 'Faltan: ${missing.join(', ')}'),
+      avatar: Icon(missing.isEmpty ? Icons.check_circle : Icons.info_outline, size: 18, color: missing.isEmpty ? Colors.green : Colors.orange),
+      label: Text(missing.isEmpty ? 'Herramientas OK' : 'Sin herramienta para: ${missing.join(', ')}'),
     );
   }
 }

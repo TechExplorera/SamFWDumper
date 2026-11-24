@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 
+import '../engine/tools.dart';
 import '../kitchen/settings.dart';
 import 'file_browser.dart';
 
@@ -45,15 +46,32 @@ class _SettingsPageState extends State<SettingsPage> {
           const Divider(),
           Text('Herramientas externas', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
-          const Text('Las herramientas solo hacen falta para extraer EROFS y para construir imágenes EROFS/ext4. '
-              'Importar, super.img, sparse, LZ4, boot, vbmeta, extracción de ext4 y Odin funcionan sin ellas.'),
+          Text('Solo hacen falta para EROFS y para construir ext4. Importar, super.img, sparse, LZ4, boot, '
+              'vbmeta, extraer ext4 y Odin funcionan sin ellas.'
+              '${Platform.isAndroid ? '\n\nLa app ya trae erofs-utils (mkfs.erofs, fsck.erofs) para ARM64. Puedes añadir una carpeta '
+                  'con otros binarios de Android (ARM64): Android solo permite ejecutarlos con root, así que se copian a '
+                  '/data/local/tmp y se ejecutan con su.' : ''}'),
+          const SizedBox(height: 8),
+          Builder(builder: (_) {
+            final caps = ToolCaps(s.toolBox());
+            Widget row(String l, bool ok) => Row(children: [
+                  Icon(ok ? Icons.check : Icons.close, size: 16, color: ok ? Colors.green : Colors.red),
+                  const SizedBox(width: 6),
+                  Text(l),
+                ]);
+            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              row('Extraer EROFS', caps.extractErofs),
+              row('Construir EROFS', caps.buildErofs),
+              row('Construir ext4', caps.buildExt4),
+            ]);
+          }),
           for (final e in status.entries)
             ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
               leading: Icon(e.value ? Icons.check_circle : Icons.cancel, color: e.value ? Colors.green : Colors.red),
               title: Text(e.key),
-              subtitle: Text(s.toolBox().find(e.key) ?? 'no encontrada'),
+              subtitle: Text(s.toolBox().describe(e.key)),
             ),
           for (final d in s.toolDirs)
             ListTile(
@@ -66,6 +84,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 onPressed: () {
                   setState(() => s.toolDirs.remove(d));
                   s.save();
+                  ToolBox.clearCache();
                 },
               ),
             ),
@@ -79,6 +98,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 if (d != null && !s.toolDirs.contains(d.first)) {
                   setState(() => s.toolDirs.add(d.first));
                   s.save();
+                  ToolBox.clearCache();
                 }
               },
             ),
