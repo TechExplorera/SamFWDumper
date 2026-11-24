@@ -6,8 +6,10 @@ import '../engine/bytes.dart';
 import '../kitchen/project.dart';
 import '../kitchen/runner.dart';
 import '../kitchen/settings.dart';
+import '../kitchen/tweaks.dart';
 import 'file_browser.dart';
 import 'log_panel.dart';
+import 'tweaks_tab.dart';
 
 class ProjectPage extends StatefulWidget {
   final Project project;
@@ -54,13 +56,14 @@ class _ProjectPageState extends State<ProjectPage> {
     (Icons.album_outlined, 'Imágenes'),
     (Icons.folder_open, 'ROM'),
     (Icons.cleaning_services_outlined, 'Debloat'),
+    (Icons.tune, 'Ajustes ROM'),
     (Icons.outbox_outlined, 'Salida'),
   ];
 
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 900;
-    final pages = [_imagesTab(), _romTab(), _DebloatTab(state: this), _outputTab()];
+    final pages = [_imagesTab(), _romTab(), _DebloatTab(state: this), TweaksTab(project: p, runner: r), _outputTab()];
     final body = IndexedStack(index: tab.clamp(0, pages.length - 1), children: pages);
     return Scaffold(
       appBar: AppBar(
@@ -93,11 +96,12 @@ class _ProjectPageState extends State<ProjectPage> {
                 ]),
               ),
             ])
-          : (tab == 4 ? LogPanel(runner: r) : body),
+          : (tab == _tabs.length ? LogPanel(runner: r) : body),
       bottomNavigationBar: wide
           ? null
           : NavigationBar(
               selectedIndex: tab,
+              labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
               onDestinationSelected: (i) => setState(() => tab = i),
               destinations: [
                 for (final (i, l) in _tabs) NavigationDestination(icon: Icon(i), label: l),
@@ -290,6 +294,7 @@ class _ProjectPageState extends State<ProjectPage> {
   Widget _outputTab() {
     final outs = p.outputs();
     final hasSuper = p.loadMeta()['super'] != null;
+    final usage = superUsage(p);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -309,6 +314,7 @@ class _ProjectPageState extends State<ProjectPage> {
             ),
         ]),
         const SizedBox(height: 16),
+        if (usage != null) SuperUsageCard(usage: usage),
         if (outs.isEmpty) const _Empty('Aquí aparecen las imágenes construidas, super.img y el AP para Odin.'),
         for (final o in outs)
           Card(
