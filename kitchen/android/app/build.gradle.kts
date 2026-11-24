@@ -29,6 +29,13 @@ android {
         versionName = flutter.versionName
     }
 
+    // Las herramientas (lib*.so en jniLibs) deben quedar extraídas en disco para poder ejecutarse
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

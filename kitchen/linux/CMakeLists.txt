@@ -126,3 +126,14 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# Herramientas externas (x86-64) del repositorio: necesarias para EROFS y para
+# construir imágenes ext4. La app las busca en <bundle>/tools.
+set(FWK_REPO_TOOLS "${CMAKE_CURRENT_SOURCE_DIR}/../../tools")
+foreach(tool extract.erofs mkfs.erofs fsck.erofs dump.erofs mke2fs.android e2fsdroid)
+  foreach(dir erofs-utils android-tools)
+    if(EXISTS "${FWK_REPO_TOOLS}/${dir}/${tool}")
+      install(PROGRAMS "${FWK_REPO_TOOLS}/${dir}/${tool}" DESTINATION "${CMAKE_INSTALL_PREFIX}/tools" COMPONENT Runtime)
+    endif()
+  endforeach()
+endforeach()

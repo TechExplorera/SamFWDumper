@@ -94,7 +94,7 @@ LpMetadata lpRead(String path, {int slot = 0}) {
   try {
     final g = Buf(readAt(f, lpReserved, 52));
     if (g.u32(0) != lpGeometryMagic) throw const FormatException('no es un super.img (falta geometría LP)');
-    final maxSize = g.u32(36), slots = g.u32(40), lbs = g.u32(44);
+    final maxSize = g.u32(40), slots = g.u32(44), lbs = g.u32(48);
     final mdOff = lpReserved + 2 * lpGeometrySize + slot * maxSize;
     final raw = readAt(f, mdOff, maxSize);
     final h = Buf(raw);

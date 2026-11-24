@@ -95,6 +95,9 @@ open(sys.argv[2],'wb').write(lz4.frame.compress(d,block_size=lz4.frame.BLOCKSIZE
     final md = lpRead(sup);
     expect(md.partitions.map((p) => p.name), ['system', 'vendor', 'odm']);
     expect(md.groups.map((g) => g.name), contains('main'));
+    expect(md.metadataMaxSize, 65536);
+    expect(md.slotCount, 2);
+    expect(md.logicalBlockSize, 4096);
     lpUnpack(sup, '${tmp.path}/out');
     expect(sha('${tmp.path}/out/system.img'), sha(a));
     expect(sha('${tmp.path}/out/vendor.img'), sha(b));

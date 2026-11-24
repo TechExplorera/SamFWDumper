@@ -9,7 +9,7 @@ class ToolBox {
   /// Directorios de búsqueda adicionales (configurables desde Ajustes).
   final List<String> searchDirs;
 
-  /// En Android, directorio de librerías nativas de la app (binarios empaquetados como lib<nombre>.so).
+  /// En Android, directorio de librerías nativas de la app (binarios empaquetados como `lib<nombre>.so`).
   final String? nativeLibDir;
 
   ToolBox({this.searchDirs = const [], this.nativeLibDir});

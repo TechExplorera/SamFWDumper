@@ -1,0 +1,56 @@
+name: FW Kitchen (build)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'kitchen/**'
+      - '.github/workflows/kitchen.yml'
+
+jobs:
+  test-and-linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kitchen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.1'
+          channel: stable
+      - name: Dependencias de Linux
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev ninja-build clang cmake pkg-config e2fsprogs && pip install lz4
+      - run: flutter pub get
+      - run: flutter analyze
+      - name: Pruebas (motor + flujo completo)
+        run: chmod +x ../tools/android-tools/* ../tools/erofs-utils/* && flutter test
+      - run: flutter build linux --release
+      - name: Empaquetar
+        run: tar -C build/linux/x64/release -czf fw_kitchen-linux-x64.tar.gz bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fw_kitchen-linux-x64
+          path: kitchen/fw_kitchen-linux-x64.tar.gz
+
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kitchen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.1'
+          channel: stable
+      - run: flutter pub get
+      - run: flutter build apk --release --target-platform android-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fw_kitchen-android-arm64
+          path: kitchen/build/app/outputs/flutter-apk/app-release.apk
