@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import '../l10n/l10n.dart';
 
 /// Lectura little/big-endian sobre un buffer.
 class Buf {
@@ -41,7 +42,7 @@ class Out {
   /// Cadena fija de [len] bytes rellenada con NUL.
   void fixedStr(String s, int len) {
     final e = latin1.encode(s);
-    if (e.length > len) throw ArgumentError('cadena demasiado larga: $s');
+    if (e.length > len) throw ArgumentError(tr('cadena demasiado larga: {0}', [s]));
     _bb.add(e);
     zeros(len - e.length);
   }
@@ -65,7 +66,7 @@ void copyBytes(RandomAccessFile src, RandomAccessFile dst, int len,
   while (left > 0) {
     final n = left < chunk ? left : chunk;
     final data = src.readSync(n);
-    if (data.isEmpty) throw const FormatException('fin de archivo inesperado');
+    if (data.isEmpty) throw FormatException(tr('fin de archivo inesperado'));
     dst.writeFromSync(data);
     left -= data.length;
     onBytes?.call(data.length);

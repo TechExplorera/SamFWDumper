@@ -7,6 +7,7 @@ import 'dart:typed_data';
 
 import 'bytes.dart';
 import 'fsmeta.dart';
+import '../l10n/l10n.dart';
 
 class ErofsInode {
   final int nid, mode, uid, gid, size, layout, rawBlk;
@@ -23,7 +24,7 @@ class ErofsImage {
   late final int blkBits, blockSize, rootNid, metaBlk, xattrBlk;
   ErofsImage(String path) : f = File(path).openSync() {
     final sb = Buf(readAt(f, 1024, 128));
-    if (sb.u32(0) != 0xE0F5E1E2) throw const FormatException('no es EROFS');
+    if (sb.u32(0) != 0xE0F5E1E2) throw FormatException(tr('no es EROFS'));
     blkBits = sb.u8(12);
     blockSize = 1 << blkBits;
     rootNid = sb.u16(14);
@@ -102,7 +103,7 @@ class ErofsImage {
       if (tail > 0) out.add(readAt(f, _inodePos(ino.nid) + ino.inodeSize + ino.xattrSize, tail));
       return out.takeBytes();
     }
-    throw FormatException('EROFS: layout ${ino.layout} no soportado para nid ${ino.nid}');
+    throw FormatException(tr('EROFS: layout {0} no soportado para nid {1}', [ino.layout, ino.nid]));
   }
 
   List<(String, int)> readDir(ErofsInode dir) {

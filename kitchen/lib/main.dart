@@ -19,17 +19,24 @@ class KitchenApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     ThemeData theme(Brightness b) => ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0E9F8E), brightness: b),
-          useMaterial3: true,
-          visualDensity: VisualDensity.standard,
-        );
-    return MaterialApp(
-      title: 'FW Kitchen',
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      darkTheme: theme(Brightness.dark),
-      themeMode: ThemeMode.dark,
-      home: HomePage(settings: settings, runner: runner),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF0E9F8E),
+        brightness: b,
+      ),
+      useMaterial3: true,
+      visualDensity: VisualDensity.standard,
+    );
+    // Reconstruye toda la app al cambiar el idioma en Ajustes
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) => MaterialApp(
+        title: 'FW Kitchen',
+        debugShowCheckedModeBanner: false,
+        theme: theme(Brightness.light),
+        darkTheme: theme(Brightness.dark),
+        themeMode: ThemeMode.dark,
+        home: HomePage(settings: settings, runner: runner),
+      ),
     );
   }
 }

@@ -10,6 +10,7 @@ import '../kitchen/tweaks.dart';
 import 'file_browser.dart';
 import 'log_panel.dart';
 import 'tweaks_tab.dart';
+import '../l10n/l10n.dart';
 
 class ProjectPage extends StatefulWidget {
   final Project project;
@@ -73,10 +74,10 @@ class _ProjectPageState extends State<ProjectPage> {
             listenable: r,
             builder: (_, _) => r.busy
                 ? const Padding(padding: EdgeInsets.all(16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
-                : IconButton(tooltip: 'Actualizar', icon: const Icon(Icons.refresh), onPressed: () => setState(() {})),
+                : IconButton(tooltip: tr('Actualizar'), icon: const Icon(Icons.refresh), onPressed: () => setState(() {})),
           ),
           if (Platform.isLinux)
-            IconButton(tooltip: 'Abrir carpeta del proyecto', icon: const Icon(Icons.folder), onPressed: () => openFolder(p.root)),
+            IconButton(tooltip: tr('Abrir carpeta del proyecto'), icon: const Icon(Icons.folder), onPressed: () => openFolder(p.root)),
         ],
       ),
       body: wide
@@ -85,7 +86,7 @@ class _ProjectPageState extends State<ProjectPage> {
                 selectedIndex: tab,
                 labelType: NavigationRailLabelType.all,
                 onDestinationSelected: (i) => setState(() => tab = i),
-                destinations: [for (final (i, l) in _tabs) NavigationRailDestination(icon: Icon(i), label: Text(l))],
+                destinations: [for (final (i, l) in _tabs) NavigationRailDestination(icon: Icon(i), label: Text(tr(l)))],
               ),
               const VerticalDivider(width: 1),
               Expanded(
@@ -104,12 +105,12 @@ class _ProjectPageState extends State<ProjectPage> {
               labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
               onDestinationSelected: (i) => setState(() => tab = i),
               destinations: [
-                for (final (i, l) in _tabs) NavigationDestination(icon: Icon(i), label: l),
+                for (final (i, l) in _tabs) NavigationDestination(icon: Icon(i), label: tr(l)),
                 ListenableBuilder(
                   listenable: r,
                   builder: (_, _) => NavigationDestination(
                     icon: Badge(isLabelVisible: r.busy, child: const Icon(Icons.terminal)),
-                    label: 'Registro',
+                    label: tr('Registro'),
                   ),
                 ),
               ],
@@ -129,42 +130,42 @@ class _ProjectPageState extends State<ProjectPage> {
         Wrap(spacing: 8, runSpacing: 8, children: [
           FilledButton.icon(
             icon: const Icon(Icons.file_open),
-            label: const Text('Importar firmware'),
+            label: Text(tr('Importar firmware')),
             onPressed: () async {
-              final files = await browseFiles(context, title: 'Firmware: .zip, AP .tar.md5, .img o .lz4');
-              if (files != null && files.isNotEmpty) await run('Importar', taskImport, {'files': files});
+              final files = await browseFiles(context, title: tr('Firmware: .zip, AP .tar.md5, .img o .lz4'));
+              if (files != null && files.isNotEmpty) await run(tr('Importar'), taskImport, {'files': files});
             },
           ),
           if (fsImgs.isNotEmpty)
             OutlinedButton.icon(
               icon: const Icon(Icons.unarchive_outlined),
-              label: Text('Extraer todas (${fsImgs.length})'),
-              onPressed: () => run('Extraer particiones', taskExtract, {'names': fsImgs}),
+              label: Text(tr('Extraer todas ({0})', [fsImgs.length])),
+              onPressed: () => run(tr('Extraer particiones'), taskExtract, {'names': fsImgs}),
             ),
           if (Platform.isAndroid && widget.settings.rootAvailable)
             OutlinedButton.icon(
               icon: const Icon(Icons.phone_android),
-              label: const Text('Copiar del dispositivo (root)'),
+              label: Text(tr('Copiar del dispositivo (root)')),
               onPressed: _dumpDevice,
             ),
         ]),
         const SizedBox(height: 16),
         if (imgs.isEmpty)
-          const _Empty('Todavía no hay imágenes.\nImporta un firmware de Samsung (.zip o AP_*.tar.md5) o imágenes sueltas.'),
+          _Empty(tr('Todavía no hay imágenes.\nImporta un firmware de Samsung (.zip o AP_*.tar.md5) o imágenes sueltas.')),
         for (final i in imgs) _imageTile(i),
         if (boots.isNotEmpty) ...[
           const SizedBox(height: 16),
-          Text('Boot desempaquetados', style: Theme.of(context).textTheme.titleMedium),
+          Text(tr('Boot desempaquetados'), style: Theme.of(context).textTheme.titleMedium),
           for (final b in boots)
             Card(
               child: ListTile(
                 leading: const Icon(Icons.memory),
                 title: Text(b),
-                subtitle: Text('boot/$b · edita kernel / ramdisk / dtb y reempaqueta'),
+                subtitle: Text(tr('boot/{0} · edita kernel / ramdisk / dtb y reempaqueta', [b])),
                 trailing: Wrap(spacing: 4, children: [
                   if (Platform.isLinux)
-                    IconButton(tooltip: 'Abrir carpeta', icon: const Icon(Icons.folder_open), onPressed: () => openFolder('${p.bootDir}/$b')),
-                  FilledButton.tonal(onPressed: () => run('Reempaquetar $b', taskBootRepack, {'name': b}), child: const Text('Reempaquetar')),
+                    IconButton(tooltip: tr('Abrir carpeta'), icon: const Icon(Icons.folder_open), onPressed: () => openFolder('${p.bootDir}/$b')),
+                  FilledButton.tonal(onPressed: () => run(tr('Reempaquetar {0}', [b]), taskBootRepack, {'name': b}), child: Text(tr('Reempaquetar'))),
                 ]),
               ),
             ),
@@ -176,15 +177,15 @@ class _ProjectPageState extends State<ProjectPage> {
   Widget _imageTile(KImage i) {
     final actions = <(String, IconData, VoidCallback)>[
       if (i.type == 'ext4' || i.type == 'erofs')
-        ('Extraer archivos', Icons.unarchive_outlined, () => run('Extraer ${i.name}', taskExtract, {'names': [i.name]})),
+        (tr('Extraer archivos'), Icons.unarchive_outlined, () => run(tr('Extraer {0}', [i.name]), taskExtract, {'names': [i.name]})),
       if (i.type == 'super')
-        ('Desempaquetar super', Icons.call_split, () => run('Desempaquetar super', taskUnpackSuper, {'path': i.path})),
+        (tr('Desempaquetar super'), Icons.call_split, () => run(tr('Desempaquetar super'), taskUnpackSuper, {'path': i.path})),
       if (i.type == 'boot')
-        ('Desempaquetar boot', Icons.memory, () => run('Desempaquetar ${i.name}', taskBootUnpack, {'name': i.name})),
+        (tr('Desempaquetar boot'), Icons.memory, () => run(tr('Desempaquetar {0}', [i.name]), taskBootUnpack, {'name': i.name})),
       if (i.type == 'vbmeta')
-        ('Desactivar verity → salida', Icons.verified_user_outlined, () => run('Parchear ${i.name}', taskVbmeta, {'name': i.name})),
-      ('Copiar a salida', Icons.outbox_outlined, () => run('Copiar ${i.name}', taskExport, {'files': [i.path], 'dest': p.outputDir})),
-      ('Borrar', Icons.delete_outline, () => _confirmDelete([i.path], '${i.name}.img')),
+        (tr('Desactivar verity → salida'), Icons.verified_user_outlined, () => run(tr('Parchear {0}', [i.name]), taskVbmeta, {'name': i.name})),
+      (tr('Copiar a salida'), Icons.outbox_outlined, () => run(tr('Copiar {0}', [i.name]), taskExport, {'files': [i.path], 'dest': p.outputDir})),
+      (tr('Borrar'), Icons.delete_outline, () => _confirmDelete([i.path], '${i.name}.img')),
     ];
     return Card(
       child: ListTile(
@@ -193,7 +194,7 @@ class _ProjectPageState extends State<ProjectPage> {
         subtitle: Text(humanSize(i.size)),
         onTap: actions.length > 2 ? actions.first.$3 : null,
         trailing: PopupMenuButton<int>(
-          tooltip: 'Acciones',
+          tooltip: tr('Acciones'),
           itemBuilder: (_) => [
             for (final (k, a) in actions.indexed)
               PopupMenuItem(value: k, child: ListTile(dense: true, leading: Icon(a.$2), title: Text(a.$1))),
@@ -208,7 +209,7 @@ class _ProjectPageState extends State<ProjectPage> {
     final parts = await listDevicePartitions();
     if (!mounted) return;
     if (parts.isEmpty) {
-      _snack('No se pudieron listar las particiones (root denegado o ruta desconocida).');
+      _snack(tr('No se pudieron listar las particiones (root denegado o ruta desconocida).'));
       return;
     }
     final common = {'boot', 'init_boot', 'vendor_boot', 'vbmeta', 'vbmeta_system', 'dtbo', 'recovery'};
@@ -217,12 +218,12 @@ class _ProjectPageState extends State<ProjectPage> {
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (context, setS) => AlertDialog(
-          title: const Text('Copiar particiones del dispositivo'),
+          title: Text(tr('Copiar particiones del dispositivo')),
           content: SizedBox(
             width: 420,
             height: 420,
             child: ListView(children: [
-              const Text('Se copian con dd a images/. "super" y "userdata" pueden ocupar muchos GB.'),
+              Text(tr('Se copian con dd a images/. "super" y "userdata" pueden ocupar muchos GB.')),
               for (final n in parts)
                 CheckboxListTile(
                   dense: true,
@@ -233,13 +234,13 @@ class _ProjectPageState extends State<ProjectPage> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Copiar')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Copiar'))),
           ],
         ),
       ),
     );
-    if (ok == true && sel.isNotEmpty) await run('Copiar del dispositivo', taskDumpDevice, {'names': sel.toList()});
+    if (ok == true && sel.isNotEmpty) await run(tr('Copiar del dispositivo'), taskDumpDevice, {'names': sel.toList()});
   }
 
   // ---------------------------------------------------------------- ROM
@@ -253,13 +254,13 @@ class _ProjectPageState extends State<ProjectPage> {
           if (parts.isNotEmpty)
             FilledButton.icon(
               icon: const Icon(Icons.construction),
-              label: Text('Construir todas (${parts.length})'),
-              onPressed: () => run('Construir particiones', taskBuild, {'names': parts}),
+              label: Text(tr('Construir todas ({0})', [parts.length])),
+              onPressed: () => run(tr('Construir particiones'), taskBuild, {'names': parts}),
             ),
           _ToolStatus(settings: widget.settings),
         ]),
         const SizedBox(height: 16),
-        if (parts.isEmpty) const _Empty('No hay particiones extraídas.\nEn "Imágenes", usa "Extraer archivos" sobre system, vendor, product…'),
+        if (parts.isEmpty) _Empty(tr('No hay particiones extraídas.\nEn "Imágenes", usa "Extraer archivos" sobre system, vendor, product…')),
         for (final n in parts)
           Card(
             child: ListTile(
@@ -268,19 +269,19 @@ class _ProjectPageState extends State<ProjectPage> {
               subtitle: Text('extracted/$n · ${p.fsTypeOf(n) ?? '?'}'),
               trailing: Wrap(spacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 if (Platform.isLinux)
-                  IconButton(tooltip: 'Abrir carpeta', icon: const Icon(Icons.folder_open), onPressed: () => openFolder('${p.extractedDir}/$n')),
+                  IconButton(tooltip: tr('Abrir carpeta'), icon: const Icon(Icons.folder_open), onPressed: () => openFolder('${p.extractedDir}/$n')),
                 PopupMenuButton<String>(
-                  tooltip: 'Construir',
+                  tooltip: tr('Construir'),
                   icon: const Icon(Icons.construction),
                   itemBuilder: (_) => [
-                    PopupMenuItem(value: p.fsTypeOf(n) ?? 'erofs', child: Text('Construir (${p.fsTypeOf(n) ?? 'erofs'}, original)')),
-                    const PopupMenuItem(value: 'erofs', child: Text('Construir como EROFS')),
-                    const PopupMenuItem(value: 'ext4', child: Text('Construir como ext4')),
-                    const PopupMenuItem(value: '_delete', child: Text('Borrar carpeta extraída')),
+                    PopupMenuItem(value: p.fsTypeOf(n) ?? 'erofs', child: Text(tr('Construir ({0}, original)', [p.fsTypeOf(n) ?? 'erofs']))),
+                    PopupMenuItem(value: 'erofs', child: Text(tr('Construir como EROFS'))),
+                    PopupMenuItem(value: 'ext4', child: Text(tr('Construir como ext4'))),
+                    PopupMenuItem(value: '_delete', child: Text(tr('Borrar carpeta extraída'))),
                   ],
                   onSelected: (v) => v == '_delete'
                       ? _confirmDelete(['${p.extractedDir}/$n'], 'extracted/$n')
-                      : run('Construir $n ($v)', taskBuild, {'names': [n], 'fsType': v}),
+                      : run(tr('Construir {0} ({1})', [n, v]), taskBuild, {'names': [n], 'fsType': v}),
                 ),
               ]),
             ),
@@ -300,22 +301,22 @@ class _ProjectPageState extends State<ProjectPage> {
       children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (hasSuper)
-            FilledButton.icon(icon: const Icon(Icons.merge_type), label: const Text('Construir super.img'), onPressed: _buildSuperDialog),
+            FilledButton.icon(icon: const Icon(Icons.merge_type), label: Text(tr('Construir super.img')), onPressed: _buildSuperDialog),
           if (outs.isNotEmpty)
-            FilledButton.tonalIcon(icon: const Icon(Icons.inventory_2_outlined), label: const Text('Crear AP para Odin'), onPressed: () => _odinDialog(outs)),
+            FilledButton.tonalIcon(icon: const Icon(Icons.inventory_2_outlined), label: Text(tr('Crear AP para Odin')), onPressed: () => _odinDialog(outs)),
           if (outs.isNotEmpty)
             OutlinedButton.icon(
               icon: const Icon(Icons.drive_file_move_outline),
-              label: const Text('Exportar…'),
+              label: Text(tr('Exportar…')),
               onPressed: () async {
-                final dest = await browseFiles(context, pickFolder: true, title: 'Carpeta de destino');
-                if (dest != null) await run('Exportar', taskExport, {'files': [for (final o in outs) o.path], 'dest': dest.first});
+                final dest = await browseFiles(context, pickFolder: true, title: tr('Carpeta de destino'));
+                if (dest != null) await run(tr('Exportar'), taskExport, {'files': [for (final o in outs) o.path], 'dest': dest.first});
               },
             ),
         ]),
         const SizedBox(height: 16),
         if (usage != null) SuperUsageCard(usage: usage),
-        if (outs.isEmpty) const _Empty('Aquí aparecen las imágenes construidas, super.img y el AP para Odin.'),
+        if (outs.isEmpty) _Empty(tr('Aquí aparecen las imágenes construidas, super.img y el AP para Odin.')),
         for (final o in outs)
           Card(
             child: ListTile(
@@ -324,19 +325,19 @@ class _ProjectPageState extends State<ProjectPage> {
               subtitle: Text(humanSize(o.size)),
               trailing: PopupMenuButton<String>(
                 itemBuilder: (_) => [
-                  if (o.name.endsWith('.img') && o.type != 'sparse') const PopupMenuItem(value: 'sparse', child: Text('Convertir a sparse')),
-                  if (o.type == 'sparse') const PopupMenuItem(value: 'raw', child: Text('Convertir a raw')),
-                  const PopupMenuItem(value: 'export', child: Text('Exportar…')),
-                  const PopupMenuItem(value: 'delete', child: Text('Borrar')),
+                  if (o.name.endsWith('.img') && o.type != 'sparse') PopupMenuItem(value: 'sparse', child: Text(tr('Convertir a sparse'))),
+                  if (o.type == 'sparse') PopupMenuItem(value: 'raw', child: Text(tr('Convertir a raw'))),
+                  PopupMenuItem(value: 'export', child: Text(tr('Exportar…'))),
+                  PopupMenuItem(value: 'delete', child: Text(tr('Borrar'))),
                 ],
                 onSelected: (v) async {
                   switch (v) {
                     case 'sparse':
                     case 'raw':
-                      await run('Convertir ${o.name}', taskSparse, {'file': o.name, 'toSparse': v == 'sparse'});
+                      await run(tr('Convertir {0}', [o.name]), taskSparse, {'file': o.name, 'toSparse': v == 'sparse'});
                     case 'export':
-                      final dest = await browseFiles(context, pickFolder: true, title: 'Carpeta de destino');
-                      if (dest != null) await run('Exportar ${o.name}', taskExport, {'files': [o.path], 'dest': dest.first});
+                      final dest = await browseFiles(context, pickFolder: true, title: tr('Carpeta de destino'));
+                      if (dest != null) await run(tr('Exportar {0}', [o.name]), taskExport, {'files': [o.path], 'dest': dest.first});
                     case 'delete':
                       await _confirmDelete([o.path], o.name);
                   }
@@ -354,25 +355,24 @@ class _ProjectPageState extends State<ProjectPage> {
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (context, setS) => AlertDialog(
-          title: const Text('Construir super.img'),
+          title: Text(tr('Construir super.img')),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Usa las particiones de "Salida" si existen; si no, las originales de "Imágenes". '
-                'Se respetan el tamaño, los grupos y la versión de metadatos del super original.'),
+            Text(tr('Usa las particiones de "Salida" si existen; si no, las originales de "Imágenes". Se respetan el tamaño, los grupos y la versión de metadatos del super original.')),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: sparse,
               onChanged: (v) => setS(() => sparse = v),
-              title: const Text('Formato sparse (recomendado para Odin/fastboot)'),
+              title: Text(tr('Formato sparse (recomendado para Odin/fastboot)')),
             ),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Construir')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Construir'))),
           ],
         ),
       ),
     );
-    if (ok == true) await run('Construir super', taskBuildSuper, {'sparse': sparse});
+    if (ok == true) await run(tr('Construir super'), taskBuildSuper, {'sparse': sparse});
   }
 
   Future<void> _odinDialog(List<KImage> outs) async {
@@ -384,16 +384,16 @@ class _ProjectPageState extends State<ProjectPage> {
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (context, setS) => AlertDialog(
-          title: const Text('Crear AP para Odin'),
+          title: Text(tr('Crear AP para Odin')),
           content: SizedBox(
             width: 440,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Nombre del archivo')),
+              TextField(controller: nameCtl, decoration: InputDecoration(labelText: tr('Nombre del archivo'))),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: compress,
                 onChanged: (v) => setS(() => compress = v),
-                title: const Text('Comprimir imágenes con LZ4'),
+                title: Text(tr('Comprimir imágenes con LZ4')),
               ),
               Flexible(
                 child: ListView(shrinkWrap: true, children: [
@@ -410,8 +410,8 @@ class _ProjectPageState extends State<ProjectPage> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-            FilledButton(onPressed: sel.isEmpty ? null : () => Navigator.pop(context, true), child: const Text('Crear')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
+            FilledButton(onPressed: sel.isEmpty ? null : () => Navigator.pop(context, true), child: Text(tr('Crear'))),
           ],
         ),
       ),
@@ -419,7 +419,7 @@ class _ProjectPageState extends State<ProjectPage> {
     if (ok == true) {
       var name = nameCtl.text.trim();
       if (!name.endsWith('.tar.md5')) name = '$name.tar.md5';
-      await run('Crear AP para Odin', taskOdin, {'files': sel.toList(), 'compress': compress, 'name': name});
+      await run(tr('Crear AP para Odin'), taskOdin, {'files': sel.toList(), 'compress': compress, 'name': name});
     }
   }
 
@@ -427,15 +427,15 @@ class _ProjectPageState extends State<ProjectPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('¿Borrar?'),
+        title: Text(tr('¿Borrar?')),
         content: Text(label),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Borrar')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Borrar'))),
         ],
       ),
     );
-    if (ok == true) await run('Borrar $label', taskDelete, {'paths': paths});
+    if (ok == true) await run(tr('Borrar {0}', [label]), taskDelete, {'paths': paths});
   }
 
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
@@ -478,8 +478,8 @@ class _DebloatTabState extends State<_DebloatTab> {
     selected.removeWhere((s) => !apps.contains(s));
     final shown = apps.where((a) => filter.isEmpty || a.toLowerCase().contains(filter.toLowerCase())).toList();
     if (apps.isEmpty) {
-      return ListView(padding: const EdgeInsets.all(16), children: const [
-        _Empty('Extrae primero system / product / vendor para ver sus apps aquí.'),
+      return ListView(padding: const EdgeInsets.all(16), children: [
+        _Empty(tr('Extrae primero system / product / vendor para ver sus apps aquí.')),
       ]);
     }
     return Column(children: [
@@ -489,13 +489,13 @@ class _DebloatTabState extends State<_DebloatTab> {
           SizedBox(
             width: 260,
             child: TextField(
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Filtrar apps', isDense: true),
+              decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: tr('Filtrar apps'), isDense: true),
               onChanged: (v) => setState(() => filter = v),
             ),
           ),
           OutlinedButton.icon(
             icon: const Icon(Icons.auto_fix_high),
-            label: const Text('Marcar sugeridas'),
+            label: Text(tr('Marcar sugeridas')),
             onPressed: () => setState(() {
               final res = widget.state.widget.settings.debloatPatterns.map((x) => RegExp(x, caseSensitive: false));
               for (final a in apps) {
@@ -503,19 +503,18 @@ class _DebloatTabState extends State<_DebloatTab> {
               }
             }),
           ),
-          TextButton(onPressed: () => setState(selected.clear), child: const Text('Desmarcar')),
+          TextButton(onPressed: () => setState(selected.clear), child: Text(tr('Desmarcar'))),
           FilledButton.icon(
             style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
             icon: const Icon(Icons.delete_forever),
-            label: Text('Eliminar (${selected.length})'),
+            label: Text(tr('Eliminar ({0})', [selected.length])),
             onPressed: selected.isEmpty ? null : _apply,
           ),
         ]),
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Text('${apps.length} apps encontradas · las sugeridas salen de los patrones de Ajustes. '
-            'Revisa la lista: quitar apps del sistema puede impedir que arranque.',
+        child: Text(tr('{0} apps encontradas · las sugeridas salen de los patrones de Ajustes. Revisa la lista: quitar apps del sistema puede impedir que arranque.', [apps.length]),
             style: Theme.of(context).textTheme.bodySmall),
       ),
       Expanded(
@@ -542,11 +541,11 @@ class _DebloatTabState extends State<_DebloatTab> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Eliminar ${selected.length} apps'),
+        title: Text(tr('Eliminar {0} apps', [selected.length])),
         content: SizedBox(width: 420, height: 300, child: ListView(children: [for (final s in selected) Text('· $s')])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Eliminar'))),
         ],
       ),
     );
@@ -599,7 +598,7 @@ class _ToolStatus extends StatelessWidget {
     final missing = ToolCaps(settings.toolBox()).missing;
     return Chip(
       avatar: Icon(missing.isEmpty ? Icons.check_circle : Icons.info_outline, size: 18, color: missing.isEmpty ? Colors.green : Colors.orange),
-      label: Text(missing.isEmpty ? 'Herramientas OK' : 'Sin herramienta para: ${missing.join(', ')}'),
+      label: Text(missing.isEmpty ? tr('Herramientas OK') : tr('Sin herramienta para: {0}', [missing.join(', ')])),
     );
   }
 }

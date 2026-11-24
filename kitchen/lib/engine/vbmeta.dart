@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import '../l10n/l10n.dart';
 
 const avbFlagHashtreeDisabled = 1, avbFlagVerificationDisabled = 2;
 
@@ -25,7 +26,7 @@ int vbmetaFlags(String path) {
 
 /// Desactiva dm-verity y la verificación AVB (como `fastboot --disable-verity --disable-verification`).
 void vbmetaDisable(String path, {bool verity = true, bool verification = true}) {
-  if (!isVbmeta(path)) throw const FormatException('no es una imagen vbmeta (falta AVB0)');
+  if (!isVbmeta(path)) throw FormatException(tr('no es una imagen vbmeta (falta AVB0)'));
   final data = File(path).readAsBytesSync();
   final bd = ByteData.sublistView(data);
   var flags = bd.getUint32(120, Endian.big);

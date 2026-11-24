@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'bytes.dart';
+import '../l10n/l10n.dart';
 
 const lz4FrameMagic = 0x184D2204;
 const lz4LegacyMagic = 0x184C2102;
@@ -27,7 +28,7 @@ int lz4DecodeBlock(Uint8List src, int sp, int send, Uint8List dst, int dp) {
     if (sp >= send) break; // último literal
     final off = src[sp] | (src[sp + 1] << 8);
     sp += 2;
-    if (off == 0) throw const FormatException('LZ4: offset 0 inválido');
+    if (off == 0) throw FormatException(tr('LZ4: offset 0 inválido'));
     var ml = token & 15;
     if (ml == 15) {
       int x;
@@ -38,7 +39,7 @@ int lz4DecodeBlock(Uint8List src, int sp, int send, Uint8List dst, int dp) {
     }
     ml += 4;
     var m = dp - off;
-    if (m < 0) throw const FormatException('LZ4: offset fuera de rango');
+    if (m < 0) throw FormatException(tr('LZ4: offset fuera de rango'));
     if (off >= ml) {
       dst.setRange(dp, dp + ml, dst, m);
       dp += ml;
@@ -61,7 +62,7 @@ class _Reader {
   bool get eof => pos >= size;
   Uint8List read(int n) {
     final r = f.readSync(n);
-    if (r.length != n) throw const FormatException('LZ4: archivo truncado');
+    if (r.length != n) throw FormatException(tr('LZ4: archivo truncado'));
     return r;
   }
 
@@ -85,7 +86,7 @@ void lz4DecompressFile(String inPath, String outPath, {Progress? onProgress}) {
         final n = r.u32();
         inF.setPositionSync(r.pos + n); // frame saltable
       } else {
-        throw FormatException('LZ4: magic desconocido 0x${magic.toRadixString(16)}');
+        throw FormatException(tr('LZ4: magic desconocido 0x{0}', [magic.toRadixString(16)]));
       }
     }
   } finally {
@@ -97,7 +98,7 @@ void lz4DecompressFile(String inPath, String outPath, {Progress? onProgress}) {
 void _decodeFrame(_Reader r, RandomAccessFile out, Progress? onProgress) {
   final flg = r.u8();
   final bd = r.u8();
-  if ((flg >> 6) != 1) throw const FormatException('LZ4: versión de frame no soportada');
+  if ((flg >> 6) != 1) throw FormatException(tr('LZ4: versión de frame no soportada'));
   final indep = (flg & 0x20) != 0;
   final blockChecksum = (flg & 0x10) != 0;
   final hasSize = (flg & 0x08) != 0;
@@ -107,7 +108,7 @@ void _decodeFrame(_Reader r, RandomAccessFile out, Progress? onProgress) {
   if (hasDict) r.read(4);
   r.u8(); // HC
   final maxBlock = const {4: 64 << 10, 5: 256 << 10, 6: 1 << 20, 7: 4 << 20}[(bd >> 4) & 7] ??
-      (throw const FormatException('LZ4: tamaño de bloque inválido'));
+      (throw FormatException(tr('LZ4: tamaño de bloque inválido')));
   const hist = 64 << 10;
   final dst = Uint8List(hist + maxBlock);
   var histLen = 0;

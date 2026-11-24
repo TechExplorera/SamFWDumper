@@ -7,6 +7,7 @@ import 'ext4.dart';
 import 'fsmeta.dart';
 import 'paxtar.dart';
 import 'tools.dart';
+import '../l10n/l10n.dart';
 
 String defaultMountPoint(String part) => part == 'system' ? '/' : '/$part';
 
@@ -22,24 +23,24 @@ Future<void> extractFs(String img, String part, String workDir, ToolBox tools, {
       final fs = Ext4Image(img);
       try {
         final mp = fs.lastMounted.startsWith('/') ? fs.lastMounted : defaultMountPoint(part);
-        log?.call('ext4: extrayendo $part (punto de montaje $mp)…');
+        log?.call(tr('ext4: extrayendo {0} (punto de montaje {1})…', [part, mp]));
         var last = 0;
         final entries = fs.extractAll(outDir, onProgress: (n, p) {
           if (n - last >= 500) {
             last = n;
-            log?.call('  $n entradas… $p');
+            log?.call(tr('  {0} entradas… {1}', [n, p]));
           }
         });
         writeFsMeta(cfgDir, part, entries);
         File('$cfgDir/${part}_mount_point').writeAsStringSync(mp);
-        log?.call('ext4: ${entries.length} entradas extraídas');
+        log?.call(tr('ext4: {0} entradas extraídas', [entries.length]));
       } finally {
         fs.close();
       }
     case ImgType.erofs:
       if (!tools.has('extract.erofs')) {
         if (!tools.has('fsck.erofs')) {
-          throw StateError('Para extraer EROFS hace falta extract.erofs o fsck.erofs (Ajustes → Herramientas).');
+          throw StateError(tr('Para extraer EROFS hace falta extract.erofs o fsck.erofs (Ajustes → Herramientas).'));
         }
         await _extractErofsUpstream(img, part, outDir, cfgDir, tools, log);
         break;
@@ -65,14 +66,14 @@ Future<void> extractFs(String img, String part, String workDir, ToolBox tools, {
         if (Directory(tmp).existsSync()) Directory(tmp).deleteSync(recursive: true);
       }
     default:
-      throw StateError('$part: tipo ${type.label} no se puede extraer como sistema de archivos');
+      throw StateError(tr('{0}: tipo {1} no se puede extraer como sistema de archivos', [part, type.label]));
   }
   File('$cfgDir/${part}_fs_type').writeAsStringSync(type.label);
 }
 
 /// EROFS con erofs-utils oficial: datos con fsck.erofs y metadatos con el lector en Dart.
 Future<void> _extractErofsUpstream(String img, String part, String outDir, String cfgDir, ToolBox tools, LogFn? log) async {
-  log?.call('erofs: leyendo metadatos de $part…');
+  log?.call(tr('erofs: leyendo metadatos de {0}…', [part]));
   final fs = ErofsImage(img);
   final List<FsEntry> entries;
   try {
@@ -80,7 +81,7 @@ Future<void> _extractErofsUpstream(String img, String part, String outDir, Strin
   } finally {
     fs.close();
   }
-  log?.call('erofs: ${entries.length} entradas; extrayendo datos con fsck.erofs…');
+  log?.call(tr('erofs: {0} entradas; extrayendo datos con fsck.erofs…', [entries.length]));
   Directory(outDir).parent.createSync(recursive: true);
   await tools.run('fsck.erofs', ['--extract=$outDir', '--no-preserve', '--overwrite', img], log: log);
   writeFsMeta(cfgDir, part, entries);
@@ -112,22 +113,22 @@ Future<void> buildFs(String part, String workDir, String fsType, String outImg, 
   final ctx = '$workDir/config/${part}_file_contexts';
   final mpFile = File('$workDir/config/${part}_mount_point');
   final mp = mpFile.existsSync() ? mpFile.readAsStringSync().trim() : defaultMountPoint(part);
-  if (!Directory(src).existsSync()) throw StateError('no existe la carpeta $src');
+  if (!Directory(src).existsSync()) throw StateError(tr('no existe la carpeta {0}', [src]));
   if (File(outImg).existsSync()) File(outImg).deleteSync();
   final added = completeFsMeta('$workDir/config', part, src);
-  if (added > 0) log?.call('metadatos: $added entradas nuevas añadidas a fs_config');
+  if (added > 0) log?.call(tr('metadatos: {0} entradas nuevas añadidas a fs_config', [added]));
   final hasCtx = File(ctx).existsSync() && File(ctx).lengthSync() > 0;
   final cfgMount = '/$part'; // prefijo usado en fs_config / file_contexts
 
   if (fsType == 'erofs' && !await _mkfsHasAndroidOptions(tools)) {
-    log?.call('erofs: construyendo desde tar con metadatos Android (mkfs.erofs --tar)…');
+    log?.call(tr('erofs: construyendo desde tar con metadatos Android (mkfs.erofs --tar)…'));
     var files = 0;
     await tools.run('mkfs.erofs', ['-zlz4hc,9', '-T', '$timestamp', '--tar=f', outImg], log: log, stdinFeed: (sink) async {
       files = await writeAndroidTar(sink, src, '$workDir/config', part, mtime: timestamp, onProgress: (n) {
-        if (n % 2000 == 0) log?.call('  $n entradas…');
+        if (n % 2000 == 0) log?.call(tr('  {0} entradas…', [n]));
       });
     });
-    log?.call('erofs: $files entradas empaquetadas');
+    log?.call(tr('erofs: {0} entradas empaquetadas', [files]));
   } else if (fsType == 'erofs') {
     await tools.run('mkfs.erofs', [
       '-zlz4hc,9',
@@ -140,8 +141,7 @@ Future<void> buildFs(String part, String workDir, String fsType, String outImg, 
     ], log: log);
   } else if (fsType == 'ext4') {
     if (!tools.has('mke2fs.android') || !tools.has('e2fsdroid')) {
-      throw StateError('Construir ext4 requiere mke2fs.android y e2fsdroid'
-          '${Platform.isAndroid ? '. En Android usa "Construir como EROFS" (kernel con EROFS: Samsung con Android 13+)' : ''}.');
+      throw StateError(tr('Construir ext4 requiere mke2fs.android y e2fsdroid{0}.', [Platform.isAndroid ? tr('. En Android usa "Construir como EROFS" (kernel con EROFS: Samsung con Android 13+)') : '']));
     }
     var size = (_dirSize(src) * 1.15).ceil() + (16 << 20);
     for (var attempt = 0; attempt < 3; attempt++) {
@@ -162,10 +162,10 @@ Future<void> buildFs(String part, String workDir, String fsType, String outImg, 
       } on ProcessException {
         if (attempt == 2) rethrow;
         size = (size * 1.3).ceil();
-        log?.call('e2fsdroid falló; reintentando con ${size >> 20} MB…');
+        log?.call(tr('e2fsdroid falló; reintentando con {0} MB…', [size >> 20]));
       }
     }
   } else {
-    throw StateError('tipo de sistema de archivos no soportado para construir: $fsType');
+    throw StateError(tr('tipo de sistema de archivos no soportado para construir: {0}', [fsType]));
   }
 }

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'bytes.dart';
+import '../l10n/l10n.dart';
 
 const bootMagic = 'ANDROID!';
 
@@ -65,7 +66,7 @@ class BootImage {
     final v = osVersion >> 11, lvl = osVersion & 0x7ff;
     final a = (v >> 14) & 0x7f, b = (v >> 7) & 0x7f, c = v & 0x7f;
     final y = (lvl >> 4) + 2000, m = lvl & 0xf;
-    return 'Android $a.$b.$c, parche $y-${m.toString().padLeft(2, '0')}';
+    return tr('Android {0}.{1}.{2}, parche {3}-{4}', [a, b, c, y, m.toString().padLeft(2, '0')]);
   }
 }
 
@@ -80,7 +81,7 @@ bool isBootImage(String path) {
 
 BootImage bootParse(Uint8List data) {
   final b = Buf(data);
-  if (latin1.decode(data.sublist(0, 8)) != bootMagic) throw const FormatException('no es un boot.img (falta ANDROID!)');
+  if (latin1.decode(data.sublist(0, 8)) != bootMagic) throw FormatException(tr('no es un boot.img (falta ANDROID!)'));
   final img = BootImage()..originalSize = data.length;
   final ver = b.u32(40);
   img.headerVersion = ver;
@@ -202,7 +203,7 @@ Uint8List bootBuild(BootImage img) {
     final vbOff = alignUp(body.length, 4096);
     final total = img.originalSize;
     if (vbOff + img.avbTail!.length + 64 > total) {
-      throw StateError('el boot nuevo (${humanSize(body.length)}) no cabe en la partición (${humanSize(total)})');
+      throw StateError(tr('el boot nuevo ({0}) no cabe en la partición ({1})', [humanSize(body.length), humanSize(total)]));
     }
     final out = Uint8List(total);
     out.setAll(0, body);

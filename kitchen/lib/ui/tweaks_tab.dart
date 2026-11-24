@@ -6,6 +6,7 @@ import '../engine/bytes.dart';
 import '../kitchen/project.dart';
 import '../kitchen/runner.dart';
 import '../kitchen/tweaks.dart';
+import '../l10n/l10n.dart';
 
 /// Pestaña "Ajustes ROM": información, build.prop, fstab y espacio del super.
 class TweaksTab extends StatefulWidget {
@@ -37,7 +38,7 @@ class _TweaksTabState extends State<TweaksTab> {
       return ListView(padding: const EdgeInsets.all(16), children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 48),
-          child: Text('Extrae system / vendor / product para editar build.prop y fstab.',
+          child: Text(tr('Extrae system / vendor / product para editar build.prop y fstab.'),
               textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.outline)),
         ),
       ]);
@@ -53,9 +54,9 @@ class _TweaksTabState extends State<TweaksTab> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('ROM', style: tt.titleMedium),
                 const SizedBox(height: 8),
-                _kv('Modelo', info.model),
+                _kv(tr('Modelo'), info.model),
                 _kv('Android', info.android),
-                _kv('Parche de seguridad', info.patch),
+                _kv(tr('Parche de seguridad'), info.patch),
                 _kv('Build', info.build),
                 _kv('Fingerprint', info.fingerprint),
               ]),
@@ -69,17 +70,17 @@ class _TweaksTabState extends State<TweaksTab> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('fstab', style: tt.titleMedium),
                 const SizedBox(height: 4),
-                Text('${fstabs.length} archivo(s): ${fstabs.join(', ')}', style: tt.bodySmall),
+                Text(tr('{0} archivo(s): {1}', [fstabs.length, fstabs.join(', ')]), style: tt.bodySmall),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   OutlinedButton.icon(
                     icon: const Icon(Icons.lock_open),
-                    label: const Text('Quitar cifrado forzado'),
+                    label: Text(tr('Quitar cifrado forzado')),
                     onPressed: () => _patchFstab(fstabs, encryption: true, avb: false),
                   ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.gpp_maybe_outlined),
-                    label: const Text('Quitar verificación AVB'),
+                    label: Text(tr('Quitar verificación AVB')),
                     onPressed: () => _patchFstab(fstabs, encryption: false, avb: true),
                   ),
                 ]),
@@ -110,21 +111,21 @@ class _TweaksTabState extends State<TweaksTab> {
     }
     if (!mounted) return;
     if (plan.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay nada que cambiar en los fstab.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('No hay nada que cambiar en los fstab.'))));
       return;
     }
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(encryption ? 'Quitar cifrado forzado' : 'Quitar verificación AVB'),
+        title: Text(encryption ? tr('Quitar cifrado forzado') : tr('Quitar verificación AVB')),
         content: SizedBox(
           width: 520,
           height: 320,
           child: ListView(children: [
             if (encryption)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 8),
-                child: Text('Tras flashear habrá que formatear /data (los datos cifrados existentes no se podrán leer).'),
+                child: Text(tr('Tras flashear habrá que formatear /data (los datos cifrados existentes no se podrán leer).')),
               ),
             for (final e in plan.entries) ...[
               Text(e.key.substring(p.extractedDir.length + 1), style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -134,8 +135,8 @@ class _TweaksTabState extends State<TweaksTab> {
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Aplicar')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Aplicar'))),
         ],
       ),
     );
@@ -146,7 +147,7 @@ class _TweaksTabState extends State<TweaksTab> {
         _log('fstab ${e.key.substring(p.extractedDir.length + 1)}: $c');
       }
     }
-    _log('✔ fstab modificado (${plan.length} archivo(s)). Reconstruye la partición para aplicarlo.');
+    _log(tr('✔ fstab modificado ({0} archivo(s)). Reconstruye la partición para aplicarlo.', [plan.length]));
     setState(() {});
   }
 
@@ -169,14 +170,14 @@ class _TweaksTabState extends State<TweaksTab> {
             SizedBox(
               width: 240,
               child: TextField(
-                decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Buscar', isDense: true),
+                decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: tr('Buscar'), isDense: true),
                 onChanged: (v) => setState(() => filter = v),
               ),
             ),
-            FilledButton.tonalIcon(icon: const Icon(Icons.add), label: const Text('Añadir'), onPressed: () => _editProp(path, null, null)),
+            FilledButton.tonalIcon(icon: const Icon(Icons.add), label: Text(tr('Añadir')), onPressed: () => _editProp(path, null, null)),
           ]),
           const SizedBox(height: 8),
-          Text('${entries.length} propiedades', style: tt.bodySmall),
+          Text(tr('{0} propiedades', [entries.length]), style: tt.bodySmall),
           ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 420),
             child: ListView.builder(
@@ -188,10 +189,10 @@ class _TweaksTabState extends State<TweaksTab> {
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   title: Text(e.key, style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
-                  subtitle: Text(e.value.isEmpty ? '(vacío)' : e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(e.value.isEmpty ? tr('(vacío)') : e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
                   onTap: () => _editProp(path, e.key, e.value),
                   trailing: IconButton(
-                    tooltip: 'Eliminar',
+                    tooltip: tr('Eliminar'),
                     icon: const Icon(Icons.delete_outline, size: 20),
                     onPressed: () {
                       setProp(path, e.key, null);
@@ -213,17 +214,17 @@ class _TweaksTabState extends State<TweaksTab> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(key == null ? 'Nueva propiedad' : 'Editar propiedad'),
+        title: Text(key == null ? tr('Nueva propiedad') : tr('Editar propiedad')),
         content: SizedBox(
           width: 460,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: k, enabled: key == null, decoration: const InputDecoration(labelText: 'Clave')),
-            TextField(controller: v, decoration: const InputDecoration(labelText: 'Valor')),
+            TextField(controller: k, enabled: key == null, decoration: InputDecoration(labelText: tr('Clave'))),
+            TextField(controller: v, decoration: InputDecoration(labelText: tr('Valor'))),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Guardar')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Guardar'))),
         ],
       ),
     );
@@ -248,9 +249,9 @@ class SuperUsageCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Espacio del super (${humanSize(dev)})', style: Theme.of(context).textTheme.titleMedium),
+          Text(tr('Espacio del super ({0})', [humanSize(dev)]), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
-          Text('Cuenta las imágenes de Salida si existen; si no, las originales.', style: Theme.of(context).textTheme.bodySmall),
+          Text(tr('Cuenta las imágenes de Salida si existen; si no, las originales.'), style: Theme.of(context).textTheme.bodySmall),
           for (final g in groups) ...[
             const SizedBox(height: 12),
             Row(children: [
@@ -268,7 +269,7 @@ class SuperUsageCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(g.parts.entries.where((e) => e.value > 0).map((e) => '${e.key} ${humanSize(e.value)}').join(' · '),
                 style: Theme.of(context).textTheme.bodySmall),
-            if (!g.fits) Text('No cabe: reduce el tamaño (debloat, EROFS) antes de construir el super.', style: TextStyle(color: cs.error)),
+            if (!g.fits) Text(tr('No cabe: reduce el tamaño (debloat, EROFS) antes de construir el super.'), style: TextStyle(color: cs.error)),
           ],
         ]),
       ),

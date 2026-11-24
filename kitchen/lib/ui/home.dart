@@ -7,6 +7,7 @@ import '../kitchen/runner.dart';
 import '../kitchen/settings.dart';
 import 'project_page.dart';
 import 'settings_page.dart';
+import '../l10n/l10n.dart';
 
 class HomePage extends StatefulWidget {
   final AppSettings settings;
@@ -42,11 +43,11 @@ class _HomePageState extends State<HomePage> {
     final name = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Nuevo proyecto'),
-        content: TextField(controller: ctl, autofocus: true, decoration: const InputDecoration(labelText: 'Nombre')),
+        title: Text(tr('Nuevo proyecto')),
+        content: TextField(controller: ctl, autofocus: true, decoration: InputDecoration(labelText: tr('Nombre'))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, ctl.text.trim()), child: const Text('Crear')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('Cancelar'))),
+          FilledButton(onPressed: () => Navigator.pop(context, ctl.text.trim()), child: Text(tr('Crear'))),
         ],
       ),
     );
@@ -71,7 +72,7 @@ class _HomePageState extends State<HomePage> {
         title: const Text('FW Kitchen'),
         actions: [
           IconButton(
-            tooltip: 'Ajustes',
+            tooltip: tr('Ajustes'),
             icon: const Icon(Icons.settings),
             onPressed: () async {
               await Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsPage(settings: widget.settings)));
@@ -85,7 +86,7 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _newProject,
         icon: const Icon(Icons.add),
-        label: const Text('Nuevo proyecto'),
+        label: Text(tr('Nuevo proyecto')),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
@@ -95,32 +96,32 @@ class _HomePageState extends State<HomePage> {
               color: Theme.of(context).colorScheme.errorContainer,
               child: ListTile(
                 leading: const Icon(Icons.folder_off),
-                title: const Text('Falta el permiso de almacenamiento'),
-                subtitle: const Text('Para leer firmwares de la memoria interna, concede "Acceso a todos los archivos".'),
+                title: Text(tr('Falta el permiso de almacenamiento')),
+                subtitle: Text(tr('Para leer firmwares de la memoria interna, concede "Acceso a todos los archivos".')),
                 trailing: FilledButton(
                   onPressed: () async {
                     await requestAllFilesAccess();
                     await Future<void>.delayed(const Duration(seconds: 1));
                     _checkPerm();
                   },
-                  child: const Text('Conceder'),
+                  child: Text(tr('Conceder')),
                 ),
               ),
             ),
           Card(
             child: ListTile(
               leading: Icon(widget.settings.rootAvailable ? Icons.admin_panel_settings : Icons.person_outline),
-              title: Text(widget.settings.rootAvailable ? 'Root disponible' : 'Modo sin root'),
-              subtitle: Text('Espacio de trabajo: ${widget.settings.workspace}'),
+              title: Text(widget.settings.rootAvailable ? tr('Root disponible') : tr('Modo sin root')),
+              subtitle: Text(tr('Espacio de trabajo: {0}', [widget.settings.workspace])),
             ),
           ),
           const SizedBox(height: 8),
-          Text('Proyectos', style: Theme.of(context).textTheme.titleMedium),
+          Text(tr('Proyectos'), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           if (projects.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 48),
-              child: Text('Crea un proyecto para empezar a cocinar una ROM.', textAlign: TextAlign.center),
+              child: Text(tr('Crea un proyecto para empezar a cocinar una ROM.'), textAlign: TextAlign.center),
             ),
           for (final d in projects)
             Card(
@@ -130,7 +131,7 @@ class _HomePageState extends State<HomePage> {
                 subtitle: Text(_summary(Project(d.path))),
                 onTap: () => _open(Project(d.path)),
                 trailing: IconButton(
-                  tooltip: 'Borrar proyecto',
+                  tooltip: tr('Borrar proyecto'),
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _deleteProject(d),
                 ),
@@ -143,23 +144,23 @@ class _HomePageState extends State<HomePage> {
 
   String _summary(Project p) {
     final imgs = p.images().length, ext = p.extractedPartitions().length, out = p.outputs().length;
-    return '$imgs imágenes · $ext extraídas · $out en salida';
+    return tr('{0} imágenes · {1} extraídas · {2} en salida', [imgs, ext, out]);
   }
 
   Future<void> _deleteProject(Directory d) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('¿Borrar proyecto?'),
-        content: Text('Se eliminará ${d.path} con todos sus archivos.'),
+        title: Text(tr('¿Borrar proyecto?')),
+        content: Text(tr('Se eliminará {0} con todos sus archivos.', [d.path])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Borrar')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr('Cancelar'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(tr('Borrar'))),
         ],
       ),
     );
     if (ok == true) {
-      await widget.runner.run('Borrar proyecto', taskDelete, {'root': d.path, 'paths': [d.path]});
+      await widget.runner.run(tr('Borrar proyecto'), taskDelete, {'root': d.path, 'paths': [d.path]});
       if (mounted) setState(() {});
     }
   }

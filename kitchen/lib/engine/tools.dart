@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import '../l10n/l10n.dart';
 
 typedef LogFn = void Function(String line);
 
@@ -50,9 +51,9 @@ class ToolBox {
   /// Origen de una herramienta, para mostrar en Ajustes.
   String describe(String name) {
     final b = find(name);
-    if (b == null) return 'no encontrada';
-    if (nativeLibDir != null && b.startsWith('$nativeLibDir/')) return 'integrada en la app';
-    if (needsRootStaging(b)) return '$b (se ejecuta con root)';
+    if (b == null) return tr('no encontrada');
+    if (nativeLibDir != null && b.startsWith('$nativeLibDir/')) return tr('integrada en la app');
+    if (needsRootStaging(b)) return tr('{0} (se ejecuta con root)', [b]);
     return b;
   }
 
@@ -81,11 +82,10 @@ class ToolBox {
       Map<String, String>? env,
       Future<void> Function(IOSink stdin)? stdinFeed}) async {
     var bin = find(name);
-    if (bin == null) throw StateError('herramienta no encontrada: $name (configúrala en Ajustes → Herramientas)');
+    if (bin == null) throw StateError(tr('herramienta no encontrada: {0} (configúrala en Ajustes → Herramientas)', [name]));
     if (needsRootStaging(bin)) {
       if (!await hasRoot()) {
-        throw StateError('$name está en una carpeta externa: en Android solo se puede ejecutar con root. '
-            'Usa la versión integrada o concede root.');
+        throw StateError(tr('{0} está en una carpeta externa: en Android solo se puede ejecutar con root. Usa la versión integrada o concede root.', [name]));
       }
       const dir = '/data/local/tmp/fwkitchen';
       final staged = '$dir/$name';
@@ -138,7 +138,7 @@ class ToolBox {
     }
     final code = await p.exitCode;
     await Future.wait(done);
-    if (code != 0) throw ProcessException(bin, args, 'salió con código $code', code);
+    if (code != 0) throw ProcessException(bin, args, tr('salió con código {0}', [code]), code);
   }
 }
 

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'bytes.dart';
 import 'fsmeta.dart';
+import '../l10n/l10n.dart';
 
 class Ext4Inode {
   final int number, mode, uid, gid, size, flags;
@@ -25,7 +26,7 @@ class Ext4Image {
 
   Ext4Image(String path) : f = File(path).openSync() {
     final sb = Buf(readAt(f, 1024, 1024));
-    if (sb.u16(56) != 0xEF53) throw const FormatException('no es ext4');
+    if (sb.u16(56) != 0xEF53) throw FormatException(tr('no es ext4'));
     blockSize = 1024 << sb.u32(24);
     final blocksPerGroup = sb.u32(32);
     inodesPerGroup = sb.u32(40);
@@ -96,7 +97,7 @@ class Ext4Image {
   /// Lista de extents (bloque lógico, bloque físico, longitud, inicializado).
   List<(int, int, int, bool)> _extents(Uint8List node) {
     final b = Buf(node);
-    if (b.u16(0) != 0xF30A) throw const FormatException('ext4: árbol de extents inválido (¿mapa indirecto?)');
+    if (b.u16(0) != 0xF30A) throw FormatException(tr('ext4: árbol de extents inválido (¿mapa indirecto?)'));
     final entries = b.u16(2), depth = b.u16(6);
     final out = <(int, int, int, bool)>[];
     for (var i = 0; i < entries; i++) {
@@ -130,7 +131,7 @@ class Ext4Image {
     }
     if ((ino.flags & 0x80000) == 0) {
       if (size == 0) return sink == null ? Uint8List(0) : null;
-      throw const FormatException('ext4: archivos con bloques indirectos no soportados');
+      throw FormatException(tr('ext4: archivos con bloques indirectos no soportados'));
     }
     final result = sink == null ? BytesBuilder(copy: false) : null;
     var written = 0;

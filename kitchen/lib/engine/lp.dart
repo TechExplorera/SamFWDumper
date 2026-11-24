@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 
 import 'bytes.dart';
+import '../l10n/l10n.dart';
 
 const lpGeometryMagic = 0x616c4467;
 const lpHeaderMagic = 0x414C5030;
@@ -93,12 +94,12 @@ LpMetadata lpRead(String path, {int slot = 0}) {
   final f = File(path).openSync();
   try {
     final g = Buf(readAt(f, lpReserved, 52));
-    if (g.u32(0) != lpGeometryMagic) throw const FormatException('no es un super.img (falta geometría LP)');
+    if (g.u32(0) != lpGeometryMagic) throw FormatException(tr('no es un super.img (falta geometría LP)'));
     final maxSize = g.u32(40), slots = g.u32(44), lbs = g.u32(48);
     final mdOff = lpReserved + 2 * lpGeometrySize + slot * maxSize;
     final raw = readAt(f, mdOff, maxSize);
     final h = Buf(raw);
-    if (h.u32(0) != lpHeaderMagic) throw const FormatException('cabecera de metadatos LP inválida');
+    if (h.u32(0) != lpHeaderMagic) throw FormatException(tr('cabecera de metadatos LP inválida'));
     final major = h.u16(4), minor = h.u16(6), headerSize = h.u32(8);
     final tablesSize = h.u32(44);
     int desc(int i, int k) => h.u32(80 + i * 12 + k * 4);
@@ -160,7 +161,7 @@ List<String> lpUnpack(String superPath, String outDir,
         for (final e in p.extents) {
           final len = e.numSectors * lpSector;
           if (e.targetType == 0) {
-            if (e.targetSource != 0) throw const FormatException('super multi-dispositivo no soportado');
+            if (e.targetSource != 0) throw FormatException(tr('super multi-dispositivo no soportado'));
             src.setPositionSync(e.targetData * lpSector);
             copyBytes(src, out, len, onBytes: (n) {
               done += n;
@@ -213,7 +214,7 @@ void lpBuild({
   ];
   int groupIndex(String n) {
     final i = allGroups.indexWhere((g) => g.name == n);
-    if (i < 0) throw ArgumentError('grupo desconocido: $n');
+    if (i < 0) throw ArgumentError(tr('grupo desconocido: {0}', [n]));
     return i;
   }
 
@@ -242,12 +243,12 @@ void lpBuild({
     extents.addAll(exts);
   }
   if (cursor > deviceSize) {
-    throw StateError('las particiones (${humanSize(cursor)}) no caben en super (${humanSize(deviceSize)})');
+    throw StateError(tr('las particiones ({0}) no caben en super ({1})', [humanSize(cursor), humanSize(deviceSize)]));
   }
   for (final e in groupUse.entries) {
     final g = allGroups[e.key];
     if (g.maxSize > 0 && e.value > g.maxSize) {
-      throw StateError('el grupo ${g.name} usa ${humanSize(e.value)} y su máximo es ${humanSize(g.maxSize)}');
+      throw StateError(tr('el grupo {0} usa {1} y su máximo es {2}', [g.name, humanSize(e.value), humanSize(g.maxSize)]));
     }
   }
 
@@ -317,7 +318,7 @@ void lpBuild({
   final h0 = header(Uint8List(32));
   final hdr = header(Uint8List.fromList(sha256.convert(h0).bytes));
   final metadata = Uint8List(metadataMaxSize);
-  if (hdr.length + tables.length > metadataMaxSize) throw StateError('metadatos mayores que metadata_max_size');
+  if (hdr.length + tables.length > metadataMaxSize) throw StateError(tr('metadatos mayores que metadata_max_size'));
   metadata.setRange(0, hdr.length, hdr);
   metadata.setRange(hdr.length, hdr.length + tables.length, tables);
 

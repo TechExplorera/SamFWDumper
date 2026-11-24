@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 
 import 'bytes.dart';
+import '../l10n/l10n.dart';
 
 class TarEntry {
   final String name;
@@ -81,7 +82,7 @@ void tarExtract(String tarPath, TarEntry e, String outPath, {Progress? onProgres
 Uint8List _header(String name, int size) {
   final h = Uint8List(512);
   final n = utf8.encode(name);
-  if (n.length > 100) throw ArgumentError('nombre demasiado largo para tar: $name');
+  if (n.length > 100) throw ArgumentError(tr('nombre demasiado largo para tar: {0}', [name]));
   h.setAll(0, n);
   void oct(int o, int len, int v) => h.setAll(o, latin1.encode('${v.toRadixString(8).padLeft(len - 1, '0')}\x00'));
   oct(100, 8, 420); // 0644

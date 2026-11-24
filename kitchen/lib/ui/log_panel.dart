@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../kitchen/runner.dart';
+import '../l10n/l10n.dart';
 
 /// Consola de registro con progreso de la tarea actual.
 class LogPanel extends StatefulWidget {
@@ -36,19 +37,19 @@ class _LogPanelState extends State<LogPanel> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    r.busy ? '${r.current}${r.progressLabel.isNotEmpty ? ' · ${r.progressLabel}' : ''}' : 'Registro',
+                    r.busy ? '${r.current}${r.progressLabel.isNotEmpty ? ' · ${r.progressLabel}' : ''}' : tr('Registro'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Copiar registro',
+                  tooltip: tr('Copiar registro'),
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.copy, size: 18),
                   onPressed: () => Clipboard.setData(ClipboardData(text: r.logs.join('\n'))),
                 ),
                 IconButton(
-                  tooltip: 'Limpiar',
+                  tooltip: tr('Limpiar'),
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.delete_sweep, size: 18),
                   onPressed: r.busy ? null : r.clearLogs,

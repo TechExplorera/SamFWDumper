@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'bytes.dart';
+import '../l10n/l10n.dart';
 
 const sparseMagic = 0xED26FF3A;
 const _chunkRaw = 0xCAC1, _chunkFill = 0xCAC2, _chunkDontCare = 0xCAC3, _chunkCrc = 0xCAC4;
@@ -22,7 +23,7 @@ void sparseToRaw(String inPath, String outPath, {Progress? onProgress}) {
   final outF = File(outPath).openSync(mode: FileMode.write);
   try {
     final h = Buf(inF.readSync(28));
-    if (h.u32(0) != sparseMagic) throw const FormatException('no es una imagen sparse');
+    if (h.u32(0) != sparseMagic) throw FormatException(tr('no es una imagen sparse'));
     final fileHdr = h.u16(8), chunkHdr = h.u16(10);
     final blk = h.u32(12), totalBlocks = h.u32(16), chunks = h.u32(20);
     inF.setPositionSync(fileHdr);
@@ -56,7 +57,7 @@ void sparseToRaw(String inPath, String outPath, {Progress? onProgress}) {
           inF.readSync(dataLen);
           break;
         default:
-          throw FormatException('sparse: tipo de chunk desconocido 0x${type.toRadixString(16)}');
+          throw FormatException(tr('sparse: tipo de chunk desconocido 0x{0}', [type.toRadixString(16)]));
       }
       outBlocks += nBlk;
       onProgress?.call(outBlocks, totalBlocks);
@@ -74,7 +75,7 @@ void rawToSparse(String inPath, String outPath, {int blockSize = 4096, Progress?
   final size = inF.lengthSync();
   if (size % blockSize != 0) {
     inF.closeSync();
-    throw ArgumentError('el tamaño ($size) no es múltiplo de $blockSize');
+    throw ArgumentError(tr('el tamaño ({0}) no es múltiplo de {1}', [size, blockSize]));
   }
   final totalBlocks = size ~/ blockSize;
   final outF = File(outPath).openSync(mode: FileMode.write);

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../engine/tools.dart';
+import '../l10n/l10n.dart';
 
 const _channel = MethodChannel('fwkitchen/platform');
 
@@ -30,6 +31,8 @@ const defaultDebloatPatterns = [
 class AppSettings extends ChangeNotifier {
   late File _file;
   String workspace = '';
+  /// 'system', 'es' o 'en'.
+  String language = 'system';
   List<String> toolDirs = [];
   List<String> debloatPatterns = List.of(defaultDebloatPatterns);
   String? nativeLibDir;
@@ -55,8 +58,10 @@ class AppSettings extends ChangeNotifier {
         s.workspace = j['workspace'] as String? ?? defaultWs;
         s.toolDirs = (j['toolDirs'] as List?)?.cast<String>() ?? [];
         s.debloatPatterns = (j['debloatPatterns'] as List?)?.cast<String>() ?? s.debloatPatterns;
+        s.language = j['language'] as String? ?? 'system';
       } catch (_) {}
     }
+    appLang = resolveLang(s.language);
     Directory(s.workspace).createSync(recursive: true);
     s.rootAvailable = await hasRoot();
     return s;
@@ -67,6 +72,7 @@ class AppSettings extends ChangeNotifier {
       'workspace': workspace,
       'toolDirs': toolDirs,
       'debloatPatterns': debloatPatterns,
+      'language': language,
     }));
     notifyListeners();
   }
@@ -106,8 +112,8 @@ class ToolCaps {
         buildErofs = t.has('mkfs.erofs'),
         buildExt4 = t.has('mke2fs.android') && t.has('e2fsdroid');
   List<String> get missing => [
-        if (!extractErofs) 'extraer EROFS',
-        if (!buildErofs) 'construir EROFS',
-        if (!buildExt4) 'construir ext4',
+        if (!extractErofs) tr('extraer EROFS'),
+        if (!buildErofs) tr('construir EROFS'),
+        if (!buildExt4) tr('construir ext4'),
       ];
 }

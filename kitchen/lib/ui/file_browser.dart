@@ -3,14 +3,15 @@ import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 
 import '../engine/bytes.dart';
+import '../l10n/l10n.dart';
 
 /// Explorador de archivos propio (rutas reales en Linux y Android).
 /// Devuelve la lista de rutas elegidas, o la carpeta si [pickFolder] es true.
 Future<List<String>?> browseFiles(BuildContext context,
-    {String? start, bool pickFolder = false, bool multi = true, String title = 'Elegir archivo'}) {
+    {String? start, bool pickFolder = false, bool multi = true, String? title}) {
   return showDialog<List<String>>(
     context: context,
-    builder: (_) => _BrowserDialog(start: start, pickFolder: pickFolder, multi: multi, title: title),
+    builder: (_) => _BrowserDialog(start: start, pickFolder: pickFolder, multi: multi, title: title ?? tr('Elegir archivo')),
   );
 }
 
@@ -57,7 +58,7 @@ class _BrowserDialogState extends State<_BrowserDialog> {
       error = null;
     } catch (e) {
       items = [];
-      error = Platform.isAndroid ? 'Sin acceso. Concede "Acceso a todos los archivos" en Ajustes.' : '$e';
+      error = Platform.isAndroid ? tr('Sin acceso. Concede "Acceso a todos los archivos" en Ajustes.') : '$e';
     }
   }
 
@@ -86,7 +87,7 @@ class _BrowserDialogState extends State<_BrowserDialog> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(children: [
                 IconButton(
-                  tooltip: 'Subir',
+                  tooltip: tr('Subir'),
                   icon: const Icon(Icons.arrow_upward),
                   onPressed: dir == '/' ? null : () => _go(parent),
                 ),
@@ -134,8 +135,8 @@ class _BrowserDialogState extends State<_BrowserDialog> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: Row(children: [
-                Expanded(child: Text(widget.pickFolder ? 'Carpeta actual' : '${selected.length} seleccionado(s)')),
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+                Expanded(child: Text(widget.pickFolder ? tr('Carpeta actual') : '${selected.length} seleccionado(s)')),
+                TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('Cancelar'))),
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: widget.pickFolder
@@ -143,7 +144,7 @@ class _BrowserDialogState extends State<_BrowserDialog> {
                       : selected.isEmpty
                           ? null
                           : () => Navigator.pop(context, selected.toList()),
-                  child: Text(widget.pickFolder ? 'Usar esta carpeta' : 'Aceptar'),
+                  child: Text(widget.pickFolder ? tr('Usar esta carpeta') : tr('Aceptar')),
                 ),
               ]),
             ),

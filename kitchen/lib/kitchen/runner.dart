@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../engine/tools.dart';
 import 'project.dart';
+import '../l10n/l10n.dart';
 
 /// Una tarea es una función top-level (enviable a un isolate) con argumentos simples.
 typedef TaskFn = Future<Object?> Function(TaskCtx c, Map<String, Object?> args);
@@ -50,7 +51,7 @@ class TaskRunner extends ChangeNotifier {
   /// Ejecuta [fn] en un isolate. Devuelve su resultado o null si falló (el error queda en el log).
   Future<Object?> run(String title, TaskFn fn, Map<String, Object?> args) async {
     if (busy) {
-      log('⚠ Ya hay una tarea en curso: $current');
+      log(tr('⚠ Ya hay una tarea en curso: {0}', [current]));
       return null;
     }
     current = title;
@@ -70,7 +71,7 @@ class TaskRunner extends ChangeNotifier {
       return r;
     } catch (e) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
-      log('✖ Error: $e');
+      log(tr('✖ Error: {0}', [e]));
       return null;
     } finally {
       await sub.cancel();
@@ -84,8 +85,13 @@ class TaskRunner extends ChangeNotifier {
 
 /// Top-level a propósito: un closure creado dentro de un método de [TaskRunner]
 /// capturaría `this` (con su IOSink) y no se podría enviar al isolate.
-Future<Object?> _spawn(TaskFn fn, Map<String, Object?> args, SendPort send, ToolBox tb) =>
-    Isolate.run(() => fn(TaskCtx(send.send, tb), args));
+Future<Object?> _spawn(TaskFn fn, Map<String, Object?> args, SendPort send, ToolBox tb) {
+  final lang = appLang; // el isolate nuevo no comparte variables globales
+  return Isolate.run(() {
+    appLang = lang;
+    return fn(TaskCtx(send.send, tb), args);
+  });
+}
 
 // ---------------- Tareas (top-level para poder enviarse a un isolate) ----------------
 
@@ -155,7 +161,7 @@ Future<Object?> taskExport(TaskCtx c, Map<String, Object?> a) async {
   Directory(dest).createSync(recursive: true);
   for (final f in (a['files'] as List).cast<String>()) {
     final name = f.split('/').last;
-    c.log('Copiando $name → $dest');
+    c.log(tr('Copiando {0} → {1}', [name, dest]));
     final src = File(f).openSync();
     final dst = File('$dest/$name').openSync(mode: FileMode.write);
     try {
@@ -173,7 +179,7 @@ Future<Object?> taskExport(TaskCtx c, Map<String, Object?> a) async {
       dst.closeSync();
     }
   }
-  c.log('✔ Exportado a $dest');
+  c.log(tr('✔ Exportado a {0}', [dest]));
   return null;
 }
 
@@ -221,7 +227,7 @@ Future<Object?> taskDumpDevice(TaskCtx c, Map<String, Object?> a) async {
       break;
     }
   }
-  if (dir == null) throw StateError('no se encontró /dev/block/by-name (¿root concedido?)');
+  if (dir == null) throw StateError(tr('no se encontró /dev/block/by-name (¿root concedido?)'));
   for (final n in (a['names'] as List).cast<String>()) {
     if (!RegExp(r'^[A-Za-z0-9_.-]+$').hasMatch(n)) continue;
     final out = '${p.imagesDir}/$n.img';
@@ -229,7 +235,7 @@ Future<Object?> taskDumpDevice(TaskCtx c, Map<String, Object?> a) async {
     // Que el archivo sea del usuario de la app y no de root
     final uid = (await Process.run('id', ['-u'])).stdout.toString().trim();
     await ToolBox.runRaw('chown', ['$uid:$uid', out], log: c.log, asRoot: true);
-    c.log('✔ $n.img (${File(out).lengthSync() >> 20} MB)');
+    c.log(tr('✔ {0}.img ({1} MB)', [n, File(out).lengthSync() >> 20]));
   }
   return null;
 }

@@ -14,6 +14,7 @@ import '../engine/sparse.dart';
 import '../engine/tar.dart';
 import '../engine/tools.dart';
 import '../engine/vbmeta.dart';
+import '../l10n/l10n.dart';
 
 /// Contexto de una tarea (logs + herramientas). Se puede crear dentro de un isolate.
 class TaskCtx {
@@ -100,29 +101,29 @@ class Project {
     } else if (type == ImgType.lz4) {
       final base = path.split('/').last.replaceAll(RegExp(r'\.lz4$'), '');
       final out = '$imagesDir/${base.endsWith('.img') ? base : '$base.img'}';
-      c.log('Descomprimiendo ${path.split('/').last}…');
+      c.log(tr('Descomprimiendo {0}…', [path.split('/').last]));
       lz4DecompressFile(path, out, onProgress: (d, t) => c.progress(base, d, t));
       await _normalize(out, c, unpackSuper: unpackSuper);
     } else {
       final base = path.split('/').last;
       final out = '$imagesDir/${base.endsWith('.img') ? base : '$base.img'}';
-      c.log('Copiando $base…');
+      c.log(tr('Copiando {0}…', [base]));
       File(path).copySync(out);
       await _normalize(out, c, unpackSuper: unpackSuper);
     }
-    c.log('✔ Importación terminada');
+    c.log(tr('✔ Importación terminada'));
   }
 
   Future<void> _importZip(String path, TaskCtx c, {required bool unpackSuper}) async {
-    c.log('Leyendo zip ${path.split('/').last}…');
+    c.log(tr('Leyendo zip {0}…', [path.split('/').last]));
     final input = InputFileStream(path);
     try {
       final archive = ZipDecoder().decodeStream(input);
       final tars = archive.files.where((f) => f.isFile && RegExp(r'\.tar(\.md5)?$', caseSensitive: false).hasMatch(f.name)).toList();
-      if (tars.isEmpty) throw StateError('el zip no contiene archivos .tar/.tar.md5 de Samsung');
+      if (tars.isEmpty) throw StateError(tr('el zip no contiene archivos .tar/.tar.md5 de Samsung'));
       for (final f in tars) {
         final n = f.name.split('/').last;
-        c.log('Extrayendo $n (${humanSize(f.size)})…');
+        c.log(tr('Extrayendo {0} ({1})…', [n, humanSize(f.size)]));
         final out = OutputFileStream('$inputDir/$n');
         f.writeContent(out);
         await out.close();
@@ -148,7 +149,7 @@ class Project {
 
   Future<void> _importTar(String path, TaskCtx c, {required bool unpackSuper}) async {
     final entries = tarList(path).where((e) => e.isFile).toList();
-    c.log('${path.split('/').last}: ${entries.length} archivos');
+    c.log(tr('{0}: {1} archivos', [path.split('/').last, entries.length]));
     final tarName = path.split('/').last;
     updateMeta((m) => (m['tars'] ??= <String, dynamic>{})[tarName] = [for (final e in entries) e.name]);
     for (final e in entries) {
@@ -160,7 +161,7 @@ class Project {
       if (isLz4) {
         final tmp = '$imagesDir/.$n.tmp';
         tarExtract(path, e, tmp, onProgress: (d, t) => c.progress('extrayendo $n', d, t));
-        c.log('Descomprimiendo $n…');
+        c.log(tr('Descomprimiendo {0}…', [n]));
         lz4DecompressFile(tmp, target, onProgress: (d, t) => c.progress('lz4 $imgName', d, t));
         File(tmp).deleteSync();
       } else {
@@ -174,7 +175,7 @@ class Project {
   Future<void> _normalize(String img, TaskCtx c, {required bool unpackSuper}) async {
     final name = img.split('/').last;
     if (detectImage(img) == ImgType.sparse) {
-      c.log('$name: sparse → raw…');
+      c.log(tr('{0}: sparse → raw…', [name]));
       final raw = '$img.raw';
       sparseToRaw(img, raw, onProgress: (d, t) => c.progress('sparse $name', d, t));
       File(raw).renameSync(img);
@@ -186,8 +187,7 @@ class Project {
 
   Future<void> unpackSuperImage(String img, TaskCtx c) async {
     final md = lpRead(img);
-    c.log('super: ${md.partitions.length} particiones, ${md.groups.length} grupos, '
-        'tamaño ${humanSize(md.blockDevices.first.size)}');
+    c.log(tr('super: {0} particiones, {1} grupos, tamaño {2}', [md.partitions.length, md.groups.length, humanSize(md.blockDevices.first.size)]));
     updateMeta((m) => m['super'] = md.toJson());
     lpUnpack(img, imagesDir, onProgress: (n, d, t) => c.progress('super → $n', d, t));
     for (final p in md.partitions) {
@@ -197,7 +197,7 @@ class Project {
     final keep = '$inputDir/super.img';
     if (File(keep).existsSync()) File(keep).deleteSync();
     File(img).renameSync(keep);
-    c.log('super.img original movido a input/');
+    c.log(tr('super.img original movido a input/'));
   }
 
   // ------------------------------------------------------------------
@@ -206,17 +206,17 @@ class Project {
 
   Future<void> extractPartition(String name, TaskCtx c) async {
     final img = '$imagesDir/$name.img';
-    c.log('Extrayendo $name…');
+    c.log(tr('Extrayendo {0}…', [name]));
     await extractFs(img, name, extractedDir, c.tools, log: c.log);
-    c.log('✔ $name extraído en extracted/$name');
+    c.log(tr('✔ {0} extraído en extracted/{1}', [name, name]));
   }
 
   Future<void> buildPartition(String name, String fsType, TaskCtx c) async {
     Directory(outputDir).createSync(recursive: true);
     final out = '$outputDir/$name.img';
-    c.log('Construyendo $name ($fsType)…');
+    c.log(tr('Construyendo {0} ({1})…', [name, fsType]));
     await buildFs(name, extractedDir, fsType, out, c.tools, log: c.log);
-    c.log('✔ $name.img: ${humanSize(File(out).lengthSync())}');
+    c.log(tr('✔ {0}.img: {1}', [name, humanSize(File(out).lengthSync())]));
   }
 
   String? fsTypeOf(String part) {
@@ -242,7 +242,7 @@ class Project {
       removed.add(p);
       c.log('  ✖ $p');
     }
-    c.log('✔ Debloat: ${removed.length} elementos eliminados');
+    c.log(tr('✔ Debloat: {0} elementos eliminados', [removed.length]));
     return removed;
   }
 
@@ -252,7 +252,7 @@ class Project {
 
   Future<void> buildSuper(TaskCtx c, {bool sparse = true}) async {
     final meta = loadMeta()['super'] as Map<String, dynamic>?;
-    if (meta == null) throw StateError('No hay metadatos de super: importa un firmware con super.img primero.');
+    if (meta == null) throw StateError(tr('No hay metadatos de super: importa un firmware con super.img primero.'));
     final groups = [
       for (final g in meta['groups'] as List)
         if (g['name'] != 'default') LpGroup(g['name'], g['flags'], g['max_size'])
@@ -268,7 +268,7 @@ class Project {
     final dev = (meta['block_devices'] as List).first;
     final ver = (meta['version'] as String).split('.');
     final raw = '$outputDir/super.raw.img';
-    c.log('Construyendo super.img…');
+    c.log(tr('Construyendo super.img…'));
     lpBuild(
       outPath: raw,
       deviceSize: dev['size'],
@@ -284,13 +284,13 @@ class Project {
       onProgress: (n, d, t) => c.progress('super ← $n', d, t),
     );
     if (sparse) {
-      c.log('Convirtiendo super a sparse…');
+      c.log(tr('Convirtiendo super a sparse…'));
       rawToSparse(raw, '$outputDir/super.img', onProgress: (d, t) => c.progress('sparse', d, t));
       File(raw).deleteSync();
     } else {
       File(raw).renameSync('$outputDir/super.img');
     }
-    c.log('✔ super.img: ${humanSize(File('$outputDir/super.img').lengthSync())}');
+    c.log(tr('✔ super.img: {0}', [humanSize(File('$outputDir/super.img').lengthSync())]));
   }
 
   void patchVbmeta(String name, TaskCtx c) {
@@ -299,7 +299,7 @@ class Project {
     Directory(outputDir).createSync(recursive: true);
     src.copySync(dst);
     vbmetaDisable(dst);
-    c.log('✔ $name.img: verity y verificación desactivadas (flags=${vbmetaFlags(dst)})');
+    c.log(tr('✔ {0}.img: verity y verificación desactivadas (flags={1})', [name, vbmetaFlags(dst)]));
   }
 
   void unpackBoot(String name, TaskCtx c) {
@@ -307,13 +307,13 @@ class Project {
     if (Directory(dir).existsSync()) Directory(dir).deleteSync(recursive: true);
     bootUnpack('$imagesDir/$name.img', dir);
     final info = jsonDecode(File('$dir/boot_info.json').readAsStringSync());
-    c.log('✔ $name desempaquetado (cabecera v${info['header_version']}, ${info['os_version_str']}): ${(info['parts'] as List).join(', ')}');
+    c.log(tr('✔ {0} desempaquetado (cabecera v{1}, {2}): {3}', [name, info['header_version'], info['os_version_str'], (info['parts'] as List).join(', ')]));
   }
 
   void repackBoot(String name, TaskCtx c) {
     Directory(outputDir).createSync(recursive: true);
     bootRepack('$bootDir/$name', '$outputDir/$name.img');
-    c.log('✔ $name.img reempaquetado');
+    c.log(tr('✔ {0}.img reempaquetado', [name]));
   }
 
   List<String> unpackedBoots() {
@@ -331,7 +331,7 @@ class Project {
         final src = '$outputDir/$f';
         if (compress && !f.endsWith('.lz4')) {
           final dst = '${tmpDir.path}/$f.lz4';
-          c.log('Comprimiendo $f…');
+          c.log(tr('Comprimiendo {0}…', [f]));
           lz4CompressFile(src, dst, onProgress: (d, t) => c.progress('lz4 $f', d, t));
           map[dst] = '$f.lz4';
         } else {
@@ -339,7 +339,7 @@ class Project {
         }
       }
       final out = '$outputDir/$name';
-      c.log('Creando $name…');
+      c.log(tr('Creando {0}…', [name]));
       tarCreate(out, map, odinMd5: true, onProgress: (d, t) => c.progress('tar', d, t));
       c.log('✔ $name: ${humanSize(File(out).lengthSync())}');
       return out;
@@ -357,6 +357,6 @@ class Project {
       sparseToRaw(src, tmp, onProgress: (d, t) => c.progress('raw', d, t));
     }
     File(tmp).renameSync(src);
-    c.log('✔ $file convertido a ${toSparse ? 'sparse' : 'raw'}');
+    c.log(tr('✔ {0} convertido a {1}', [file, toSparse ? 'sparse' : 'raw']));
   }
 }
