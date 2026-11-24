@@ -109,7 +109,7 @@ Future<void> buildFs(String part, String workDir, String fsType, String outImg, 
       await tools.run('mke2fs.android', [
         '-O', '^has_journal', '-t', 'ext4', '-b', '4096', '-L', part, '-I', '256', '-M', mp, '-m', '0',
         outImg, '$blocks',
-      ], log: log);
+      ], log: log, env: androidMke2fsEnv());
       try {
         await tools.run('e2fsdroid', [
           '-e', '-T', '$timestamp',

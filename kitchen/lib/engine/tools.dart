@@ -38,21 +38,23 @@ class ToolBox {
   Map<String, bool> status(List<String> names) => {for (final n in names) n: has(n)};
 
   /// Ejecuta [name] con [args]; reenvía la salida línea a línea. Lanza si el código de salida != 0.
-  Future<void> run(String name, List<String> args, {LogFn? log, String? workDir, bool asRoot = false}) async {
+  Future<void> run(String name, List<String> args,
+      {LogFn? log, String? workDir, bool asRoot = false, Map<String, String>? env}) async {
     final bin = find(name);
     if (bin == null) throw StateError('herramienta no encontrada: $name (configúrala en Ajustes → Herramientas)');
-    await runRaw(bin, args, log: log, workDir: workDir, asRoot: asRoot);
+    await runRaw(bin, args, log: log, workDir: workDir, asRoot: asRoot, env: env);
   }
 
-  static Future<void> runRaw(String bin, List<String> args, {LogFn? log, String? workDir, bool asRoot = false}) async {
+  static Future<void> runRaw(String bin, List<String> args,
+      {LogFn? log, String? workDir, bool asRoot = false, Map<String, String>? env}) async {
     final Process p;
     if (asRoot) {
       final cmd = [bin, ...args].map(_shQuote).join(' ');
       log?.call('# su -c $cmd');
-      p = await Process.start('su', ['-c', cmd], workingDirectory: workDir);
+      p = await Process.start('su', ['-c', cmd], workingDirectory: workDir, environment: env);
     } else {
       log?.call('\$ ${[bin.split('/').last, ...args].join(' ')}');
-      p = await Process.start(bin, args, workingDirectory: workDir);
+      p = await Process.start(bin, args, workingDirectory: workDir, environment: env);
     }
     final done = <Future>[];
     for (final s in [p.stdout, p.stderr]) {
@@ -78,4 +80,34 @@ Future<bool> hasRoot() async {
   } catch (_) {
     return false;
   }
+}
+
+/// mke2fs.conf estilo AOSP. Sin él, mke2fs.android lee /etc/mke2fs.conf del sistema,
+/// que en distros modernas activa funciones (orphan_file, metadata_csum_seed...) que no conoce.
+const _androidMke2fsConf = """[defaults]
+\tbase_features = sparse_super,large_file,filetype,dir_index,ext_attr
+\tdefault_mntopts = acl,user_xattr
+\tenable_periodic_fsck = 0
+\tblocksize = 4096
+\tinode_size = 256
+\tinode_ratio = 16384
+\treserved_ratio = 1.0
+\tlazy_itable_init = false
+\tno_discard = true
+
+[fs_types]
+\text3 = {
+\t\tfeatures = has_journal
+\t}
+\text4 = {
+\t\tfeatures = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize
+\t\tinode_size = 256
+\t}
+""";
+
+/// Entorno para ejecutar mke2fs.android con la configuración de Android.
+Map<String, String> androidMke2fsEnv() {
+  final f = File('${Directory.systemTemp.path}/fwk_mke2fs.conf');
+  if (!f.existsSync() || f.readAsStringSync() != _androidMke2fsConf) f.writeAsStringSync(_androidMke2fsConf);
+  return {'MKE2FS_CONFIG': f.path};
 }

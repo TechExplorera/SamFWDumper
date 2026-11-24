@@ -19,6 +19,7 @@ final at = '$repo/tools/android-tools', et = '$repo/tools/erofs-utils';
 final tb = ToolBox(searchDirs: [at, et]);
 
 Future<void> sh(String bin, List<String> args, {Map<String, String>? env}) async {
+  if (bin.endsWith('mke2fs.android')) env = {...?env, ...androidMke2fsEnv()};
   final r = await Process.run(bin, args, environment: env);
   if (r.exitCode != 0) throw StateError('$bin ${args.join(' ')}\n${r.stdout}${r.stderr}');
 }
